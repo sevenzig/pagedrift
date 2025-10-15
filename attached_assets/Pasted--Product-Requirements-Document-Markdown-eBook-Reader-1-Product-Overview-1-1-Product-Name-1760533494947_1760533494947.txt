@@ -1,0 +1,358 @@
+# Product Requirements Document: Markdown eBook Reader
+
+## 1. Product Overview
+
+### 1.1 Product Name
+Markdown eBook Reader
+
+### 1.2 Purpose
+A lightweight, modern eBook reader that converts EPUB, MOBI, and PDF files into markdown format for clean, distraction-free reading with consistent styling across all book formats.
+
+### 1.3 Target Users
+- Developers and technical readers who prefer markdown formatting
+- Users seeking a unified reading experience across different eBook formats
+- Readers who value clean, text-focused interfaces without proprietary formatting
+
+---
+
+## 2. Technical Stack
+
+### 2.1 Frontend Framework
+- **Svelte 5** with SvelteKit 2
+- **shadcn-svelte** for UI components and styling
+- **Tailwind CSS** (required by shadcn)
+
+### 2.2 Development Environment
+- **Replit** as primary development platform
+- Node.js runtime environment
+
+### 2.3 Key Libraries
+- **epub.js** or **epub2** - EPUB parsing
+- **pdf-parse** or **pdfjs-dist** - PDF text extraction
+- **mobi** or custom parser - MOBI file handling
+- **Turndown** or **html-to-md** - HTML to Markdown conversion
+- **marked** or **markdown-it** - Markdown rendering
+
+---
+
+## 3. Core Features
+
+### 3.1 File Upload & Import
+**Priority: P0 (Must Have)**
+
+- Drag-and-drop file upload interface
+- File picker button for manual selection
+- Support for `.epub`, `.mobi`, and `.pdf` file extensions
+- Client-side file validation (file type and size limits)
+- Maximum file size: 50MB per book
+- Visual feedback during upload process
+
+### 3.2 Format Parsing & Conversion
+**Priority: P0 (Must Have)**
+
+**EPUB Processing:**
+- Extract text content from EPUB structure
+- Parse chapter hierarchy and metadata
+- Convert embedded HTML to markdown
+- Preserve heading levels (H1-H6)
+- Extract book metadata (title, author, publication date)
+
+**MOBI Processing:**
+- Parse MOBI file structure
+- Extract text content and chapter divisions
+- Convert formatting to markdown equivalents
+- Handle both MOBI7 and KF8 formats where possible
+
+**PDF Processing:**
+- Extract text layer from PDF documents
+- Detect and preserve paragraph breaks
+- Handle multi-column layouts
+- Attempt to identify heading structures
+- Warning: PDF conversion quality depends on source document structure
+
+**Markdown Conversion Standards:**
+- Preserve bold (`**text**`) and italic (`*text*`) formatting
+- Convert headings to proper markdown levels
+- Preserve lists (ordered and unordered)
+- Convert blockquotes
+- Handle inline code and code blocks where applicable
+- Strip proprietary formatting and DRM-related elements
+
+### 3.3 Reading Interface
+**Priority: P0 (Must Have)**
+
+**Layout Components (using shadcn-svelte):**
+- Card component for book display area
+- Button components for navigation controls
+- Scroll Area component for reading pane
+- Separator components for visual hierarchy
+
+**Reading Experience:**
+- Clean, centered reading column (optimal line length: 60-80 characters)
+- Responsive typography with comfortable font sizes
+- Previous/Next chapter navigation
+- Progress indicator showing current position
+- Smooth scrolling behavior
+- Mobile-responsive design
+
+**Typography Settings:**
+- Font size adjustment (small, medium, large, extra-large)
+- Font family selection (serif, sans-serif, monospace)
+- Line height adjustment
+- Text alignment options
+
+### 3.4 Library Management
+**Priority: P1 (Should Have)**
+
+- Book library view showing all uploaded books
+- Display book covers (if available in metadata)
+- Show book metadata: title, author, format
+- Search/filter functionality
+- Delete books from library
+- LocalStorage or IndexedDB for persistence
+- Recently read books section
+
+### 3.5 Navigation & Reading Progress
+**Priority: P0 (Must Have)**
+
+- Table of contents navigation (generated from markdown headers)
+- Chapter selection dropdown/sidebar
+- Reading progress percentage
+- Resume from last position on return
+- Bookmark current location
+
+---
+
+## 4. User Interface Design
+
+### 4.1 Layout Structure
+
+**Main Views:**
+1. **Library View** - Grid of uploaded books
+2. **Reader View** - Full-screen reading interface
+3. **Upload View** - Drag-and-drop zone for new books
+
+### 4.2 shadcn-svelte Components to Use
+
+**Essential Components:**
+- `Button` - Navigation, actions
+- `Card` - Book containers, content areas
+- `Dropdown Menu` - Settings, chapter selection
+- `Scroll Area` - Reading pane
+- `Separator` - Visual divisions
+- `Tabs` - Switching between library/reader
+- `Dialog` - Upload modal, settings
+- `Progress` - Reading progress indicator
+- `Input` - Search functionality
+- `Select` - Font and theme options
+
+**Theme:**
+- Light and dark mode support (using shadcn theming)
+- System preference detection
+- Theme toggle button
+
+### 4.3 Responsive Breakpoints
+- Mobile: < 640px
+- Tablet: 640px - 1024px
+- Desktop: > 1024px
+
+---
+
+## 5. Technical Architecture
+
+### 5.1 SvelteKit Project Structure
+
+```
+src/
+├── lib/
+│   ├── components/
+│   │   ├── ui/              # shadcn components
+│   │   ├── BookCard.svelte
+│   │   ├── Reader.svelte
+│   │   ├── Library.svelte
+│   │   ├── UploadZone.svelte
+│   │   └── TOC.svelte
+│   ├── parsers/
+│   │   ├── epub-parser.ts
+│   │   ├── mobi-parser.ts
+│   │   ├── pdf-parser.ts
+│   │   └── markdown-converter.ts
+│   ├── stores/
+│   │   ├── books.ts         # Book library state
+│   │   ├── reader.ts        # Reading state
+│   │   └── settings.ts      # User preferences
+│   └── utils/
+│       ├── storage.ts
+│       └── file-validation.ts
+├── routes/
+│   ├── +page.svelte         # Library view
+│   ├── reader/
+│   │   └── [bookId]/
+│   │       └── +page.svelte # Reader view
+│   └── +layout.svelte
+└── app.css                   # Tailwind + shadcn styles
+```
+
+### 5.2 Data Models
+
+**Book Interface:**
+```typescript
+interface Book {
+  id: string;
+  title: string;
+  author?: string;
+  format: 'epub' | 'mobi' | 'pdf';
+  uploadDate: Date;
+  lastRead?: Date;
+  progress: number; // 0-100
+  coverImage?: string;
+  markdown: string;
+  chapters: Chapter[];
+}
+
+interface Chapter {
+  id: string;
+  title: string;
+  content: string; // markdown
+  level: number;
+  order: number;
+}
+```
+
+### 5.3 State Management
+- Svelte 5 runes for reactive state
+- SvelteKit stores for global state
+- Browser storage for persistence (IndexedDB via localforage)
+
+---
+
+## 6. Development Phases
+
+### Phase 1: MVP (Weeks 1-2)
+- [ ] Project setup with SvelteKit 2 + Svelte 5
+- [ ] shadcn-svelte installation and configuration
+- [ ] Basic file upload interface
+- [ ] EPUB parser implementation
+- [ ] Markdown conversion pipeline
+- [ ] Basic reading interface
+- [ ] Simple navigation (next/previous)
+
+### Phase 2: Multi-Format Support (Week 3)
+- [ ] MOBI parser implementation
+- [ ] PDF parser implementation
+- [ ] Format detection and routing
+- [ ] Error handling for unsupported files
+
+### Phase 3: Enhanced Reading Experience (Week 4)
+- [ ] Typography settings
+- [ ] Theme switching (light/dark)
+- [ ] Table of contents navigation
+- [ ] Progress tracking and bookmarks
+- [ ] Responsive design refinement
+
+### Phase 4: Library Management (Week 5)
+- [ ] Library grid view
+- [ ] Book metadata display
+- [ ] Search and filter
+- [ ] Delete functionality
+- [ ] Storage persistence
+- [ ] Cover image extraction and display
+
+### Phase 5: Polish & Optimization (Week 6)
+- [ ] Performance optimization for large files
+- [ ] Accessibility improvements
+- [ ] Error handling and user feedback
+- [ ] Loading states and skeleton screens
+- [ ] Cross-browser testing
+
+---
+
+## 7. Constraints & Limitations
+
+### 7.1 Technical Constraints
+- Client-side processing only (no backend required)
+- Browser memory limits for large files
+- PDF text extraction quality depends on source document
+- MOBI format may have limited support for newer formats
+- No DRM support (intentional)
+
+### 7.2 Known Limitations
+- Image extraction not included in MVP (markdown text only)
+- No annotation or highlighting features in initial release
+- No cloud sync capabilities
+- Limited to browser storage capacity
+
+---
+
+## 8. Success Metrics
+
+### 8.1 Performance Targets
+- File upload and parsing: < 5 seconds for typical eBook (< 5MB)
+- Initial render: < 1 second
+- Page navigation: < 100ms
+- Lighthouse score: > 90
+
+### 8.2 User Experience Goals
+- Support 95%+ of common EPUB files
+- Readable markdown conversion for 85%+ of books
+- Zero crashes during normal usage
+- Responsive on devices from mobile to desktop
+
+---
+
+## 9. Future Enhancements (Post-MVP)
+
+**P2 - Nice to Have:**
+- Export processed markdown files
+- Print functionality
+- Reading statistics and analytics
+- Full-text search within books
+- Notes and highlights
+- Multiple reading themes
+- Keyboard shortcuts
+- Cloud storage integration
+- Social features (reading lists, recommendations)
+
+---
+
+## 10. Development Guidelines
+
+### 10.1 Code Standards
+- TypeScript strict mode
+- Svelte 5 runes and snippets
+- Prettier for formatting
+- ESLint for code quality
+- Component-driven development
+
+### 10.2 Testing Strategy
+- Unit tests for parsers and converters
+- Integration tests for file upload flow
+- Manual testing across formats
+- Cross-browser compatibility testing
+
+### 10.3 Documentation
+- README with setup instructions
+- Component documentation
+- Parser API documentation
+- User guide for supported formats
+
+---
+
+## 11. Security & Privacy
+
+- All processing happens client-side
+- No data sent to external servers
+- No tracking or analytics in MVP
+- No user accounts required
+- Local storage only
+- Clear data deletion options
+
+---
+
+## Appendix A: Reference Links
+
+- Svelte 5 Documentation: https://svelte-5-preview.vercel.app/
+- SvelteKit 2 Documentation: https://kit.svelte.dev/
+- shadcn-svelte: https://www.shadcn-svelte.com/
+- EPUB.js: https://github.com/futurepress/epub.js
+- PDF.js: https://mozilla.github.io/pdf.js/
