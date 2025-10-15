@@ -1,72 +1,75 @@
-import * as pdfjsLib from 'pdfjs-dist';
 import type { Book, Chapter } from '$lib/types';
 import { generateId } from '$lib/utils/file-validation';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
 export async function parsePdf(file: File): Promise<Omit<Book, 'id' | 'uploadDate'>> {
-	const arrayBuffer = await file.arrayBuffer();
-	const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-	const pdf = await loadingTask.promise;
+        const pdfjsLib = await import('pdfjs-dist');
+        
+        if (typeof window !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        }
 
-	const title = file.name.replace('.pdf', '');
-	let fullMarkdown = '';
-	const chapters: Chapter[] = [];
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
 
-	const numPages = pdf.numPages;
+        const title = file.name.replace('.pdf', '');
+        let fullMarkdown = '';
+        const chapters: Chapter[] = [];
 
-	for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-		const page = await pdf.getPage(pageNum);
-		const textContent = await page.getTextContent();
+        const numPages = pdf.numPages;
 
-		const pageText = textContent.items
-			.map((item: any) => {
-				if ('str' in item) {
-					return item.str;
-				}
-				return '';
-			})
-			.join(' ');
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const textContent = await page.getTextContent();
 
-		if (pageText.trim()) {
-			const chunkSize = 10;
-			const chapterIndex = Math.floor((pageNum - 1) / chunkSize);
+                const pageText = textContent.items
+                        .map((item: any) => {
+                                if ('str' in item) {
+                                        return item.str;
+                                }
+                                return '';
+                        })
+                        .join(' ');
 
-			if (!chapters[chapterIndex]) {
-				const startPage = chapterIndex * chunkSize + 1;
-				const endPage = Math.min(startPage + chunkSize - 1, numPages);
-				const chapterTitle =
-					numPages > chunkSize
-						? `Pages ${startPage}-${endPage}`
-						: 'Content';
+                if (pageText.trim()) {
+                        const chunkSize = 10;
+                        const chapterIndex = Math.floor((pageNum - 1) / chunkSize);
 
-				chapters[chapterIndex] = {
-					id: generateId(),
-					title: chapterTitle,
-					content: '',
-					level: 1,
-					order: chapterIndex
-				};
-			}
+                        if (!chapters[chapterIndex]) {
+                                const startPage = chapterIndex * chunkSize + 1;
+                                const endPage = Math.min(startPage + chunkSize - 1, numPages);
+                                const chapterTitle =
+                                        numPages > chunkSize
+                                                ? `Pages ${startPage}-${endPage}`
+                                                : 'Content';
 
-			chapters[chapterIndex].content += `\n\n${pageText}`;
-		}
-	}
+                                chapters[chapterIndex] = {
+                                        id: generateId(),
+                                        title: chapterTitle,
+                                        content: '',
+                                        level: 1,
+                                        order: chapterIndex
+                                };
+                        }
 
-	chapters.forEach((chapter) => {
-		const content = chapter.content.trim();
-		chapter.content = content;
-		fullMarkdown += `\n\n# ${chapter.title}\n\n${content}`;
-	});
+                        chapters[chapterIndex].content += `\n\n${pageText}`;
+                }
+        }
 
-	return {
-		title,
-		author: undefined,
-		format: 'pdf',
-		progress: 0,
-		markdown: fullMarkdown.trim(),
-		chapters: chapters.filter((c) => c.content.trim().length > 0),
-		lastRead: undefined,
-		coverImage: undefined
-	};
+        chapters.forEach((chapter) => {
+                const content = chapter.content.trim();
+                chapter.content = content;
+                fullMarkdown += `\n\n# ${chapter.title}\n\n${content}`;
+        });
+
+        return {
+                title,
+                author: undefined,
+                format: 'pdf',
+                progress: 0,
+                markdown: fullMarkdown.trim(),
+                chapters: chapters.filter((c) => c.content.trim().length > 0),
+                lastRead: undefined,
+                coverImage: undefined
+        };
 }

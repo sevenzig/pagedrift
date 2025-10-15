@@ -1,14 +1,17 @@
-import ePub from 'epubjs';
-import TurndownService from 'turndown';
 import type { Book, Chapter } from '$lib/types';
 import { generateId } from '$lib/utils/file-validation';
 
-const turndownService = new TurndownService({
-        headingStyle: 'atx',
-        codeBlockStyle: 'fenced'
-});
-
 export async function parseEpub(file: File): Promise<Omit<Book, 'id' | 'uploadDate'>> {
+        const [{ default: ePub }, { default: TurndownService }] = await Promise.all([
+                import('epubjs'),
+                import('turndown')
+        ]);
+
+        const turndownService = new TurndownService({
+                headingStyle: 'atx',
+                codeBlockStyle: 'fenced'
+        });
+
         const arrayBuffer = await file.arrayBuffer();
         const book = ePub(arrayBuffer);
 
