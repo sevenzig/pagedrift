@@ -6,6 +6,20 @@ const ALLOWED_TYPES = {
 };
 
 export function validateFile(file: File): { valid: boolean; error?: string } {
+	if (!file) {
+		return {
+			valid: false,
+			error: 'No file selected'
+		};
+	}
+
+	if (file.size === 0) {
+		return {
+			valid: false,
+			error: 'File is empty'
+		};
+	}
+
 	if (file.size > MAX_FILE_SIZE) {
 		return {
 			valid: false,

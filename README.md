@@ -1,182 +1,396 @@
-# Markdown eBook Reader
+# EBook Voyage
 
-A lightweight, modern eBook reader built with **Svelte 5** and **SvelteKit 2** that converts EPUB, MOBI, and PDF files into markdown format for clean, distraction-free reading.
+A multi-user, server-side rendered eBook reader platform with authentication, permissions, and full-text search. Think Plex/Jellyfin for books—a shared library that everyone can access and read from any device.
 
 ## ✨ Features
 
-- **Multi-Format Support**: Upload EPUB, MOBI, or PDF files (max 50MB)
-- **Markdown Conversion**: All books converted to clean markdown format
-- **Beautiful Reading Interface**: Centered reading column with optimal typography
-- **Customizable Typography**: 
-  - Font sizes (Small, Medium, Large, Extra-Large)
-  - Font families (Serif, Sans-serif, Monospace)
-  - Line height adjustments
-- **Chapter Navigation**: Table of contents with chapter jumping
-- **Theme Support**: Light, Dark, and System preference detection
-- **Offline Storage**: Books stored locally in IndexedDB
-- **Library Management**: Organize and manage your book collection
-- **Privacy-First**: All processing happens client-side, no data sent to servers
+- **Multi-User Platform**: Shared library with role-based access control
+- **Authentication System**: JWT-based authentication with secure password hashing
+- **Role-Based Permissions**: Admin, user, and guest roles with configurable upload/delete rights
+- **Server-Side Rendering**: Fast initial page loads with SvelteKit SSR
+- **Multi-Format Support**: EPUB, MOBI, and PDF files (max 50MB)
+- **Full-Text Search**: Powered by Meilisearch for blazing-fast searches
+- **Reading Progress Sync**: Track your progress across devices
+- **Beautiful Reading Interface**: Customizable typography and themes
+- **Admin Dashboard**: Manage users and permissions
+- **Docker-Ready**: Easy deployment with docker-compose
 
-## 🚀 Getting Started
+## 🏗️ Architecture
 
-### Installation
+### Stack
+
+- **Frontend**: Svelte 5 + SvelteKit 2 (SSR)
+- **Backend**: Node.js (adapter-node)
+- **Database**: SQLite with Prisma ORM
+- **Search**: Meilisearch
+- **Authentication**: JWT with bcrypt
+- **Storage**: Local filesystem with Docker volumes
+
+### Data Model
+
+```
+User
+  ├── hasMany → UserBookProgress
+  └── hasMany → Book (uploaded books)
+
+Book
+  ├── hasMany → Chapter
+  └── hasMany → UserBookProgress
+
+UserBookProgress (tracks reading progress per user per book)
+```
+
+## 🚀 Deployment to Dokploy
+
+### Prerequisites
+
+- Dokploy instance running
+- GitHub repository with this code
+- Or use docker-compose directly
+
+### Option 1: Deploy from GitHub
+
+1. **Push to GitHub**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/yourusername/ebook-voyage.git
+   git push -u origin master
+   ```
+
+2. **Import in Dokploy**
+   - Go to your Dokploy dashboard
+   - Click "New Application"
+   - Select "Import from GitHub"
+   - Choose this repository
+
+3. **Set Environment Variables** in Dokploy UI:
+   ```
+   JWT_SECRET=your-super-secret-jwt-key-change-this
+   MEILISEARCH_MASTER_KEY=your-meilisearch-key-change-this
+   DATABASE_URL=file:/app/data/db/sqlite.db
+   MEILISEARCH_HOST=http://meilisearch:7700
+   MEILISEARCH_KEY=your-meilisearch-key-change-this
+   BOOKS_STORAGE_PATH=/app/data/books
+   NODE_ENV=production
+   ORIGIN=https://your-domain.com
+   ```
+
+4. **Configure Volumes** in Dokploy:
+   - Mount `./data` → `/app/data` (for database and books)
+
+5. **Deploy**
+   - Click "Deploy"
+   - First user to register becomes admin!
+
+### Option 2: Deploy from docker-compose
+
+1. **Create `.env` file** (see `.env.example`):
+   ```bash
+   cp .env.example .env
+   # Edit .env with your values
+   ```
+
+2. **Deploy to Dokploy**:
+   - Go to Dokploy dashboard
+   - Click "New Application"
+   - Select "Docker Compose"
+   - Upload your `docker-compose.yml`
+   - Set environment variables
+   - Deploy
+
+### Post-Deployment
+
+1. **Register First User** (becomes admin):
+   - Navigate to `https://your-domain.com/register`
+   - Create your account
+   - You're now the admin!
+
+2. **Invite Other Users**:
+   - Share the registration link
+   - New users register themselves
+   - Manage their permissions in `/admin`
+
+3. **Set User Permissions**:
+   - Go to `/admin` (admin only)
+   - Configure who can upload/delete books
+
+## 🔧 Local Development
+
+### Prerequisites
+
+- Node.js 22+
+- npm or pnpm
+
+### Setup
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your local values
+   ```
+
+3. **Generate Prisma client**:
+   ```bash
+   npm run prisma:generate
+   ```
+
+4. **Run database migrations**:
+   ```bash
+   npm run prisma:migrate
+   ```
+
+5. **Start Meilisearch** (in separate terminal):
+   ```bash
+   docker run -p 7700:7700 \
+     -e MEILI_MASTER_KEY="your-meilisearch-key" \
+     getmeili/meilisearch:v1.6
+   ```
+
+6. **Start development server**:
+   ```bash
+   npm run dev
+   ```
+
+7. **Open** `http://localhost:5173`
+
+### Development with Docker
 
 ```bash
-npm install
+# Build and start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop services
+docker-compose down
 ```
 
-### Development
+## 📖 Usage Guide
 
-```bash
-npm run dev
-```
+### For Admins
 
-The app will be available at `http://localhost:5000`
+1. **User Management** (`/admin`):
+   - View all users
+   - Change user roles (admin/user/guest)
+   - Grant upload permissions
+   - Grant delete permissions
 
-### Build for Production
+2. **Upload Books**:
+   - Drag & drop EPUB, MOBI, or PDF files
+   - Books are automatically parsed and indexed
+   - Shared with all users
 
-```bash
-npm run build
-npm run preview
-```
+### For Users
 
-## 📖 How to Use
+1. **Browse Library** (`/`):
+   - See all books uploaded by any user
+   - Click to read
 
-1. **Upload a Book**: Drag and drop an EPUB, MOBI, or PDF file onto the upload zone
-2. **Start Reading**: Click "Read" on any book in your library
-3. **Navigate**: Use Previous/Next buttons or the table of contents to navigate chapters
-4. **Customize**: Adjust font size, family, and theme in the settings panel
-5. **Manage**: Delete books from your library when you're done
+2. **Read Books** (`/reader/{bookId}`):
+   - Navigate chapters
+   - Customize reading experience
+   - Progress automatically saved
 
-## 🛠️ Tech Stack
+3. **Search** (if implemented in UI):
+   - Search by title/author
+   - Full-text search within books
 
-- **Framework**: Svelte 5 with SvelteKit 2
-- **Styling**: Tailwind CSS v4
-- **Storage**: IndexedDB (via localforage)
-- **Parsers**:
-  - EPUB: epubjs
-  - PDF: pdfjs-dist
-  - MOBI: Custom basic parser
-- **Markdown**: 
-  - Conversion: Turndown
-  - Rendering: markdown-it
+## 🔒 Security Features
 
-## 📁 Project Structure
+- **Password Hashing**: bcrypt with salt rounds
+- **JWT Tokens**: httpOnly cookies with 7-day expiration
+- **Session Management**: Database-backed sessions
+- **Permission System**: Fine-grained access control
+- **First-User Admin**: First registrant becomes admin automatically
 
-```
-src/
-├── lib/
-│   ├── components/
-│   │   ├── ui/              # Button, Card components
-│   │   ├── Library.svelte   # Library grid view
-│   │   ├── Reader.svelte    # Reading interface
-│   │   └── UploadZone.svelte
-│   ├── parsers/
-│   │   ├── epub-parser.ts
-│   │   ├── pdf-parser.ts
-│   │   └── mobi-parser.ts
-│   ├── stores/
-│   │   ├── books.svelte.ts
-│   │   ├── reader.svelte.ts
-│   │   └── settings.svelte.ts
-│   ├── utils/
-│   │   ├── storage.ts
-│   │   ├── file-validation.ts
-│   │   └── cn.ts
-│   └── types.ts
-└── routes/
-    ├── +page.svelte         # Library view
-    └── reader/[bookId]/
-        └── +page.svelte     # Reader view
-```
+## 🔐 Permission System
 
-## ⚡ Features Overview
+### Roles
 
-### File Upload
-- Drag-and-drop interface
-- File validation (type and size)
-- Visual upload feedback
-- Support for EPUB, MOBI, and PDF formats
+- **Admin**: Full access to everything + user management
+- **User**: Can read all books, optional upload/delete
+- **Guest**: Read-only access
 
-### Format Parsing
+### Permissions (configurable per user)
 
-**EPUB**:
-- Full text extraction
-- Chapter hierarchy preservation
-- Metadata extraction (title, author)
-- HTML to Markdown conversion
+- **canUpload**: Can upload new books
+- **canDelete**: Can delete books from library
 
-**PDF**:
-- Text layer extraction
-- Paragraph break preservation
-- Automatic chapter chunking
+## 🎨 Customization Options
 
-**MOBI**:
-- Basic text extraction
-- Automatic chapter division
-- Clean text processing
-
-### Reading Experience
-- Clean, centered layout
-- Responsive design (mobile, tablet, desktop)
-- Typography customization
-- Progress tracking
-- Chapter navigation
-- Table of contents
-
-## 🎨 Customization
-
-The reader offers extensive customization options:
+The reader offers extensive customization:
 
 - **Font Size**: SM, MD, LG, XL
 - **Font Family**: Serif, Sans-serif, Monospace
 - **Line Height**: Normal, Relaxed, Loose
 - **Theme**: Light, Dark, System
 
-## 🔒 Privacy & Security
+## 📊 Database Management
 
-- **Client-Side Only**: All processing happens in your browser
-- **No External Servers**: No data sent to external services
-- **Local Storage**: Books stored in browser IndexedDB
-- **No Tracking**: No analytics or user tracking
-- **No Accounts**: No registration or login required
+### Prisma Commands
 
-## 🌐 Browser Compatibility
+```bash
+# Generate Prisma Client
+npm run prisma:generate
 
-- Modern browsers with ES2020+ support
-- IndexedDB support required
-- File API support required
-- Recommended: Chrome, Firefox, Safari, Edge (latest versions)
+# Create migration
+npm run prisma:migrate
 
-## ⚠️ Known Limitations
+# Apply migrations (production)
+npm run prisma:deploy
 
-- Client-side processing only (no backend)
-- Browser memory limits for large files (50MB max)
-- PDF quality depends on source document structure
-- MOBI format has basic support (MVP level)
+# Open Prisma Studio (database GUI)
+npm run prisma:studio
+```
+
+### Backup Database
+
+```bash
+# SQLite database location
+./data/db/sqlite.db
+
+# Backup
+cp ./data/db/sqlite.db ./data/db/sqlite.db.backup
+```
+
+## 🔍 Search (Meilisearch)
+
+### Indexes
+
+- **books**: Metadata search (title, author)
+- **chapters**: Full-text search in book content
+
+### API Endpoint
+
+```http
+GET /api/search?q=query&type=metadata|fulltext&limit=20
+```
+
+## 🗂️ File Storage
+
+Books are stored on the filesystem:
+
+```
+/app/data/
+  ├── db/
+  │   └── sqlite.db          # SQLite database
+  ├── books/
+  │   ├── {bookId}/
+  │   │   └── original.{ext} # Original uploaded file
+  │   └── ...
+  └── meili_data/            # Meilisearch index data
+```
+
+## 🔄 API Endpoints
+
+### Authentication
+
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
+
+### Books
+
+- `GET /api/books` - List all books
+- `POST /api/books/upload` - Upload book (requires permission)
+- `GET /api/books/[id]` - Get book with chapters
+- `DELETE /api/books/[id]` - Delete book (requires permission)
+- `PUT /api/books/[id]` - Update metadata (admin only)
+
+### Progress
+
+- `GET /api/books/[id]/progress` - Get reading progress
+- `PUT /api/books/[id]/progress` - Update progress
+
+### Admin
+
+- `GET /api/admin/users` - List all users (admin only)
+- `PUT /api/admin/users/[id]/permissions` - Update permissions (admin only)
+
+### Search
+
+- `GET /api/search` - Search books and content
+
+## 🚧 Known Limitations
+
+- Maximum file size: 50MB
+- SQLite database (suitable for small-to-medium deployments)
 - No DRM support (intentional)
-- Images not extracted (text only)
-- No cloud sync
+- Server-side processing may be slow for very large PDFs
 
-## 🔮 Future Enhancements
+## 🛠️ Troubleshooting
 
-- Enhanced MOBI parser with KF8 format support
-- Cover image extraction and display
-- Export processed markdown files
-- Bookmarking system
-- Reading statistics
-- Full-text search within books
-- Notes and highlights
-- Keyboard shortcuts
+### Meilisearch Connection Issues
 
-## 📝 License
+```bash
+# Check Meilisearch logs
+docker logs <meilisearch-container>
 
-MIT License - Feel free to use this project for any purpose.
+# Verify connection
+curl http://localhost:7700/health
+```
+
+### Database Issues
+
+```bash
+# Reset database (⚠️ deletes all data)
+rm ./data/db/sqlite.db
+npm run prisma:migrate
+
+# View database
+npm run prisma:studio
+```
+
+### Permission Errors
+
+```bash
+# Ensure data directory is writable
+chmod -R 755 ./data
+```
+
+## 📝 Environment Variables Reference
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `DATABASE_URL` | SQLite database path | `file:./data/db/sqlite.db` | Yes |
+| `JWT_SECRET` | Secret key for JWT signing | - | Yes |
+| `MEILISEARCH_HOST` | Meilisearch server URL | `http://localhost:7700` | Yes |
+| `MEILISEARCH_KEY` | Meilisearch API key | - | Yes |
+| `BOOKS_STORAGE_PATH` | Path to store uploaded books | `./data/books` | Yes |
+| `NODE_ENV` | Environment (development/production) | `development` | No |
+| `ORIGIN` | App public URL | `http://localhost:3000` | Yes (prod) |
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to submit issues or pull requests.
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📄 License
+
+MIT License - Feel free to use this project for any purpose.
+
+## 🙏 Acknowledgments
+
+Built with:
+- Svelte 5 & SvelteKit 2
+- Prisma
+- Meilisearch
+- Tailwind CSS
+- EPUB.js, PDF.js, markdown-it
 
 ---
 
-**Built with ❤️ using Svelte 5 and SvelteKit 2**
+**Built for sharing the joy of reading 📚**

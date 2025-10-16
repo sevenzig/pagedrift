@@ -9,6 +9,8 @@ class SettingsStore {
 		theme: 'system'
 	});
 
+	showSettings = $state(false);
+
 	async init() {
 		this.settings = await loadSettings();
 		this.applyTheme();

@@ -1,105 +1,163 @@
 <script lang="ts">
-        import { validateFile, getFileFormat, generateId } from '$lib/utils/file-validation';
-        import { parseEpub } from '$lib/parsers/epub-parser';
-        import { parsePdf } from '$lib/parsers/pdf-parser';
-        import { parseMobi } from '$lib/parsers/mobi-parser';
-        import { booksStore } from '$lib/stores/books.svelte';
+        import { onMount } from 'svelte';
+        import { invalidateAll } from '$app/navigation';
         import Button from './ui/Button.svelte';
         import Card from './ui/Card.svelte';
-        import type { Book } from '$lib/types';
 
         let dragging = $state(false);
         let uploading = $state(false);
         let error = $state<string | null>(null);
+        let success = $state<string | null>(null);
+        let uploadProgress = $state<string>('');
         let fileInput: HTMLInputElement;
+
+        // Prevent default drag behavior globally to stop browser from opening files
+        onMount(() => {
+                const preventDefaults = (e: Event) => {
+                        // Only prevent if the drag is not over our upload zone
+                        const target = e.target as Element;
+                        if (!target.closest('[data-upload-zone]')) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                        }
+                };
+
+                // Prevent browser from opening files when dragged onto window
+                window.addEventListener('dragover', preventDefaults);
+                window.addEventListener('drop', preventDefaults);
+
+                return () => {
+                        window.removeEventListener('dragover', preventDefaults);
+                        window.removeEventListener('drop', preventDefaults);
+                };
+        });
 
         async function handleFile(file: File) {
                 error = null;
-                const validation = validateFile(file);
+                success = null;
+                uploadProgress = '';
 
-                if (!validation.valid) {
-                        error = validation.error || 'Invalid file';
+                // Basic validation
+                const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+                if (file.size > MAX_SIZE) {
+                        error = 'File size exceeds 50MB limit';
+                        return;
+                }
+
+                const filename = file.name.toLowerCase();
+                if (!filename.endsWith('.epub') && !filename.endsWith('.pdf') && !filename.endsWith('.mobi')) {
+                        error = 'Only EPUB, PDF, and MOBI files are supported';
                         return;
                 }
 
                 uploading = true;
+                uploadProgress = 'Uploading file...';
 
                 try {
-                        const format = getFileFormat(file);
-                        if (!format) {
-                                throw new Error('Unsupported file format');
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        uploadProgress = 'Processing book...';
+
+                        const response = await fetch('/api/books/upload', {
+                                method: 'POST',
+                                body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                                throw new Error(data.error || 'Upload failed');
                         }
 
-                        let bookData: Omit<Book, 'id' | 'uploadDate'>;
-
-                        if (format === 'epub') {
-                                bookData = await parseEpub(file);
-                        } else if (format === 'pdf') {
-                                bookData = await parsePdf(file);
-                        } else if (format === 'mobi') {
-                                bookData = await parseMobi(file);
-                        } else {
-                                throw new Error('Unsupported format');
+                        // Reset file input after successful upload
+                        if (fileInput) {
+                                fileInput.value = '';
                         }
 
-                        const book: Book = {
-                                ...bookData,
-                                id: generateId(),
-                                uploadDate: new Date()
-                        };
-
-                        await booksStore.addBook(book);
+                        success = `Successfully uploaded "${data.book.title}"!`;
+                        uploadProgress = '';
+                        
+                        // Refresh the page data
+                        await invalidateAll();
+                        
+                        // Clear success message after 3 seconds
+                        setTimeout(() => {
+                                success = null;
+                        }, 3000);
                 } catch (err) {
-                        console.error('Error processing file:', err);
-                        error = err instanceof Error ? err.message : 'Error processing file';
+                        console.error('Upload error:', err);
+                        error = err instanceof Error ? err.message : 'Failed to upload book';
+                        uploadProgress = '';
                 } finally {
                         uploading = false;
                 }
         }
 
-        function handleDrop(e: DragEvent) {
-                e.preventDefault();
-                dragging = false;
+	function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		dragging = false;
 
-                const files = e.dataTransfer?.files;
-                if (files && files.length > 0) {
-                        handleFile(files[0]);
-                }
-        }
+		const files = e.dataTransfer?.files;
+		if (files && files.length > 0) {
+			console.log('File dropped:', files[0].name);
+			handleFile(files[0]);
+		}
+	}
 
-        function handleDragOver(e: DragEvent) {
-                e.preventDefault();
-                dragging = true;
-        }
+	function handleDragOver(e: DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		dragging = true;
+	}
 
-        function handleDragLeave() {
-                dragging = false;
-        }
+	function handleDragEnter(e: DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		dragging = true;
+	}
+
+	function handleDragLeave(e: DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		dragging = false;
+	}
 
         function handleFileSelect(e: Event) {
                 const input = e.target as HTMLInputElement;
                 if (input.files && input.files.length > 0) {
+                        console.log('File selected:', input.files[0].name);
                         handleFile(input.files[0]);
                 }
         }
 
         function openFileDialog() {
-                fileInput.click();
+                console.log('Opening file dialog, fileInput:', fileInput);
+                if (fileInput) {
+                        fileInput.click();
+                } else {
+                        console.error('File input not found');
+                }
         }
 </script>
 
 <Card class="p-8">
-        <div
-                role="button"
-                tabindex="0"
-                class="border-2 border-dashed rounded-lg p-12 text-center transition-colors {dragging
-                        ? 'border-primary bg-primary/5'
-                        : 'border-muted-foreground/25'}"
-                ondrop={handleDrop}
-                ondragover={handleDragOver}
-                ondragleave={handleDragLeave}
-                onkeydown={(e) => e.key === 'Enter' && openFileDialog()}
-        >
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		data-upload-zone
+		role="button"
+		tabindex="0"
+		class="border-2 border-dashed rounded-lg p-12 text-center transition-colors {dragging
+			? 'border-primary bg-primary/5'
+			: 'border-muted-foreground/25'}"
+		ondrop={handleDrop}
+		ondragover={handleDragOver}
+		ondragenter={handleDragEnter}
+		ondragleave={handleDragLeave}
+		onkeydown={(e) => e.key === 'Enter' && openFileDialog()}
+		onclick={openFileDialog}
+	>
                 {#if uploading}
                         <div class="space-y-4">
                                 <div class="text-lg font-medium">Processing book...</div>
@@ -119,6 +177,12 @@
                         </div>
                 {/if}
 
+                {#if success}
+                        <div class="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-sm">
+                                {success}
+                        </div>
+                {/if}
+
                 {#if error}
                         <div class="mt-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
                                 {error}
@@ -132,5 +196,6 @@
                 accept=".epub,.mobi,.pdf"
                 onchange={handleFileSelect}
                 class="hidden"
+                id="file-upload-input"
         />
 </Card>

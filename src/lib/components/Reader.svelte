@@ -1,165 +1,274 @@
 <script lang="ts">
+	// @ts-ignore - markdown-it types issue
 	import MarkdownIt from 'markdown-it';
-	import { booksStore } from '$lib/stores/books.svelte';
-	import { readerStore } from '$lib/stores/reader.svelte';
+	import { goto } from '$app/navigation';
 	import { settingsStore } from '$lib/stores/settings.svelte';
 	import Button from './ui/Button.svelte';
 	import Card from './ui/Card.svelte';
-	import type { Book, Chapter } from '$lib/types';
+	import type { Chapter } from '$lib/types';
+	import { onMount } from 'svelte';
 
 	interface Props {
-		bookId: string;
+		book: {
+			id: string;
+			title: string;
+			author?: string | null;
+			chapters: Chapter[];
+		};
+		initialProgress?: {
+			currentChapterId?: string | null;
+			progress?: number;
+		} | null;
 	}
 
-	let { bookId }: Props = $props();
+	let { book, initialProgress }: Props = $props();
 
-	const md = new MarkdownIt();
-
-	let book = $derived(booksStore.getBook(bookId));
-	let currentChapterIndex = $state(0);
-	let scrollContainer: HTMLDivElement;
-
-	$effect(() => {
-		if (book) {
-			readerStore.setCurrentBook(bookId, book.chapters[currentChapterIndex]?.id);
-		}
+	const md = new MarkdownIt({
+		html: true,
+		linkify: true,
+		typographer: true,
+		breaks: false
 	});
 
-	let currentChapter = $derived(book?.chapters[currentChapterIndex]);
+	// Custom image renderer
+	const defaultImageRender = md.renderer.rules.image || function(tokens: any, idx: number, options: any, env: any, self: any) {
+		return self.renderToken(tokens, idx, options);
+	};
+
+	md.renderer.rules.image = function (tokens: any, idx: number, options: any, env: any, self: any) {
+		const token = tokens[idx];
+		const srcIndex = token.attrIndex('src');
+		
+		if (srcIndex >= 0) {
+			token.attrPush(['loading', 'lazy']);
+			token.attrPush(['style', 'max-width: 100%; height: auto;']);
+		}
+		
+		return defaultImageRender(tokens, idx, options, env, self);
+	};
+
+	// Find initial chapter from progress
+	let initialChapterIndex = 0;
+	if (initialProgress?.currentChapterId) {
+		const foundIndex = book.chapters.findIndex(ch => ch.id === initialProgress.currentChapterId);
+		if (foundIndex !== -1) {
+			initialChapterIndex = foundIndex;
+		}
+	}
+
+	let currentChapterIndex = $state(initialChapterIndex);
+	let scrollContainer: HTMLDivElement | undefined;
+	let showTOC = $state(false);
+	let savingProgress = $state(false);
+
+	let currentChapter = $derived(book.chapters[currentChapterIndex]);
 	let renderedContent = $derived(
 		currentChapter ? md.render(currentChapter.content) : ''
 	);
 
-	function nextChapter() {
-		if (book && currentChapterIndex < book.chapters.length - 1) {
-			currentChapterIndex++;
-			scrollContainer?.scrollTo(0, 0);
+	// Initialize settings store
+	onMount(async () => {
+		await settingsStore.init();
+	});
+
+	async function saveProgress() {
+		if (savingProgress) return;
+
+		savingProgress = true;
+		try {
+			await fetch(`/api/books/${book.id}/progress`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					currentChapterId: currentChapter.id,
+					progress: (currentChapterIndex / book.chapters.length) * 100
+				})
+			});
+		} catch (error) {
+			console.error('Failed to save progress:', error);
+		} finally {
+			savingProgress = false;
 		}
 	}
 
-	function prevChapter() {
+	function previousChapter() {
 		if (currentChapterIndex > 0) {
 			currentChapterIndex--;
-			scrollContainer?.scrollTo(0, 0);
+			scrollToTop();
+			saveProgress();
 		}
 	}
 
-	function selectChapter(index: number) {
-		currentChapterIndex = index;
-		scrollContainer?.scrollTo(0, 0);
+	function nextChapter() {
+		if (currentChapterIndex < book.chapters.length - 1) {
+			currentChapterIndex++;
+			scrollToTop();
+			saveProgress();
+		}
 	}
 
-	const fontSizeClasses = {
-		sm: 'text-sm',
-		md: 'text-base',
-		lg: 'text-lg',
-		xl: 'text-xl'
-	};
+	function goToChapter(index: number) {
+		currentChapterIndex = index;
+		showTOC = false;
+		scrollToTop();
+		saveProgress();
+	}
 
-	const fontFamilyClasses = {
-		serif: 'font-serif',
-		sans: 'font-sans',
-		mono: 'font-mono'
-	};
+	function scrollToTop() {
+		if (scrollContainer) {
+			scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+		}
+	}
 
-	const lineHeightClasses = {
-		normal: 'leading-normal',
-		relaxed: 'leading-relaxed',
-		loose: 'leading-loose'
-	};
+	let fontSize = $derived(settingsStore.settings.fontSize);
+	let fontFamily = $derived(settingsStore.settings.fontFamily);
+	let lineHeight = $derived(settingsStore.settings.lineHeight);
+	let theme = $derived(settingsStore.settings.theme);
 </script>
 
-{#if !book}
-	<div class="flex items-center justify-center h-screen">
-		<p class="text-muted-foreground">Book not found</p>
-	</div>
-{:else}
-	<div class="flex flex-col h-screen">
-		<header class="border-b bg-card p-4">
-			<div class="max-w-4xl mx-auto flex items-center justify-between">
-				<div class="flex-1">
-					<h1 class="text-xl font-semibold">{book.title}</h1>
+<div class="min-h-screen bg-background">
+	<!-- Header -->
+	<header class="border-b bg-card sticky top-0 z-10">
+		<div class="max-w-5xl mx-auto px-4 py-4">
+			<div class="flex items-center justify-between gap-4">
+				<Button variant="outline" size="sm" onclick={() => goto('/')}>
+					← Library
+				</Button>
+				
+				<div class="flex-1 text-center min-w-0">
+					<h1 class="text-lg font-semibold truncate">{book.title}</h1>
 					{#if book.author}
-						<p class="text-sm text-muted-foreground">{book.author}</p>
+						<p class="text-sm text-muted-foreground truncate">{book.author}</p>
 					{/if}
 				</div>
-				<div class="flex gap-2">
-					<a href="/">
-						<Button variant="outline" size="sm">← Library</Button>
-					</a>
+
+				<div class="flex items-center gap-2">
+					<Button variant="outline" size="sm" onclick={() => (showTOC = !showTOC)}>
+						{showTOC ? 'Hide' : 'Chapters'}
+					</Button>
+					<Button variant="outline" size="sm" onclick={() => (settingsStore.showSettings = !settingsStore.showSettings)}>
+						Settings
+					</Button>
 				</div>
 			</div>
-		</header>
+		</div>
+	</header>
 
-		<div class="flex flex-1 overflow-hidden">
-			<aside class="w-64 border-r bg-card overflow-y-auto hidden md:block">
+	<div class="flex">
+		<!-- Table of Contents -->
+		{#if showTOC}
+			<aside class="w-64 border-r bg-card h-[calc(100vh-73px)] sticky top-[73px] overflow-y-auto">
 				<div class="p-4">
-					<h2 class="font-semibold mb-4">Table of Contents</h2>
+					<h2 class="text-lg font-semibold mb-4">Chapters</h2>
 					<nav class="space-y-1">
 						{#each book.chapters as chapter, index}
 							<button
-								onclick={() => selectChapter(index)}
-								class="w-full text-left px-3 py-2 rounded text-sm transition-colors {currentChapterIndex ===
-								index
+								onclick={() => goToChapter(index)}
+								class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors {index === currentChapterIndex
 									? 'bg-primary text-primary-foreground'
-									: 'hover:bg-accent'}"
+									: 'hover:bg-muted'}"
 							>
-								{chapter.title}
+								<div class="font-medium truncate">{chapter.title}</div>
 							</button>
 						{/each}
 					</nav>
 				</div>
 			</aside>
+		{/if}
 
-			<main class="flex-1 overflow-y-auto" bind:this={scrollContainer}>
-				<div class="max-w-3xl mx-auto px-6 py-8">
-					<Card class="p-8">
-						<article
-							class="prose dark:prose-invert max-w-none {fontSizeClasses[
-								settingsStore.settings.fontSize
-							]} {fontFamilyClasses[settingsStore.settings.fontFamily]} {lineHeightClasses[
-								settingsStore.settings.lineHeight
-							]}"
-						>
-							{@html renderedContent}
-						</article>
+		<!-- Main Content -->
+		<main class="flex-1">
+			<div class="max-w-3xl mx-auto px-6 py-8">
+				<!-- Chapter Title -->
+				<Card class="mb-6 p-6">
+					<h2 class="text-2xl font-bold mb-2">{currentChapter.title}</h2>
+					<p class="text-sm text-muted-foreground">
+						Chapter {currentChapterIndex + 1} of {book.chapters.length}
+					</p>
+					{#if savingProgress}
+						<p class="text-xs text-muted-foreground mt-2">Saving progress...</p>
+					{/if}
+				</Card>
 
-						<div class="flex justify-between mt-8 pt-8 border-t">
-							<Button
-								onclick={prevChapter}
-								variant="outline"
-								disabled={currentChapterIndex === 0}
-							>
-								← Previous
-							</Button>
-							<span class="text-sm text-muted-foreground self-center">
-								Chapter {currentChapterIndex + 1} of {book.chapters.length}
-							</span>
-							<Button
-								onclick={nextChapter}
-								variant="outline"
-								disabled={currentChapterIndex === book.chapters.length - 1}
-							>
-								Next →
-							</Button>
-						</div>
-					</Card>
+				<!-- Chapter Content -->
+				<Card class="p-8">
+					<div
+						bind:this={scrollContainer}
+						class="prose max-w-none
+							{fontSize === 'sm' ? 'text-sm' : ''}
+							{fontSize === 'md' ? 'text-base' : ''}
+							{fontSize === 'lg' ? 'text-lg' : ''}
+							{fontSize === 'xl' ? 'text-xl' : ''}
+							{fontFamily === 'serif' ? 'font-serif' : ''}
+							{fontFamily === 'sans' ? 'font-sans' : ''}
+							{fontFamily === 'mono' ? 'font-mono' : ''}
+							{lineHeight === 'normal' ? 'leading-normal' : ''}
+							{lineHeight === 'relaxed' ? 'leading-relaxed' : ''}
+							{lineHeight === 'loose' ? 'leading-loose' : ''}"
+					>
+						{@html renderedContent}
+					</div>
+				</Card>
+
+				<!-- Navigation -->
+				<div class="flex justify-between items-center mt-8">
+					<Button
+						variant="outline"
+						onclick={previousChapter}
+						disabled={currentChapterIndex === 0}
+					>
+						← Previous
+					</Button>
+
+					<span class="text-sm text-muted-foreground">
+						{currentChapterIndex + 1} / {book.chapters.length}
+					</span>
+
+					<Button
+						variant="outline"
+						onclick={nextChapter}
+						disabled={currentChapterIndex === book.chapters.length - 1}
+					>
+						Next →
+					</Button>
 				</div>
-			</main>
+			</div>
+		</main>
+	</div>
 
-			<aside class="w-64 border-l bg-card p-4 hidden lg:block">
-				<h2 class="font-semibold mb-4">Settings</h2>
-				<div class="space-y-4">
+	<!-- Settings Panel -->
+	{#if settingsStore.showSettings}
+		<div
+			class="fixed inset-0 bg-black/50 z-20"
+			role="button"
+			tabindex="0"
+			onclick={() => (settingsStore.showSettings = false)}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					settingsStore.showSettings = false;
+				}
+			}}
+		></div>
+		<div class="fixed right-0 top-0 h-full w-80 bg-card border-l z-30 overflow-y-auto">
+			<div class="p-6">
+				<div class="flex items-center justify-between mb-6">
+					<h2 class="text-xl font-semibold">Settings</h2>
+					<Button variant="outline" size="sm" onclick={() => (settingsStore.showSettings = false)}>
+						Close
+					</Button>
+				</div>
+
+				<div class="space-y-6">
+					<!-- Font Size -->
 					<div>
-						<label class="text-sm font-medium mb-2 block">Font Size</label>
-						<div class="grid grid-cols-2 gap-2">
-							{#each ['sm', 'md', 'lg', 'xl'] as size}
+						<div class="text-sm font-medium block mb-2">Font Size</div>
+						<div class="grid grid-cols-4 gap-2" role="group" aria-label="Font Size">
+							{#each (['sm', 'md', 'lg', 'xl'] as const) as size}
 								<Button
-									variant={settingsStore.settings.fontSize === size
-										? 'default'
-										: 'outline'}
+									variant={fontSize === size ? 'default' : 'outline'}
 									size="sm"
-									onclick={() => settingsStore.setFontSize(size as any)}
+									onclick={() => settingsStore.setFontSize(size)}
 								>
 									{size.toUpperCase()}
 								</Button>
@@ -167,41 +276,70 @@
 						</div>
 					</div>
 
+					<!-- Font Family -->
 					<div>
-						<label class="text-sm font-medium mb-2 block">Font Family</label>
-						<div class="space-y-2">
-							{#each ['serif', 'sans', 'mono'] as family}
+						<div class="text-sm font-medium block mb-2">Font Family</div>
+						<div class="space-y-2" role="group" aria-label="Font Family">
+							{#each [
+								{ value: 'serif' as const, label: 'Serif' },
+								{ value: 'sans' as const, label: 'Sans-serif' },
+								{ value: 'mono' as const, label: 'Monospace' }
+							] as font}
 								<Button
-									variant={settingsStore.settings.fontFamily === family
-										? 'default'
-										: 'outline'}
-									size="sm"
+									variant={fontFamily === font.value ? 'default' : 'outline'}
 									class="w-full"
-									onclick={() => settingsStore.setFontFamily(family as any)}
+									size="sm"
+									onclick={() => settingsStore.setFontFamily(font.value)}
 								>
-									{family.charAt(0).toUpperCase() + family.slice(1)}
+									{font.label}
 								</Button>
 							{/each}
 						</div>
 					</div>
 
+					<!-- Line Height -->
 					<div>
-						<label class="text-sm font-medium mb-2 block">Theme</label>
-						<div class="space-y-2">
-							{#each ['light', 'dark', 'system'] as theme}
+						<div class="text-sm font-medium block mb-2">Line Height</div>
+						<div class="space-y-2" role="group" aria-label="Line Height">
+							{#each [
+								{ value: 'normal' as const, label: 'Normal' },
+								{ value: 'relaxed' as const, label: 'Relaxed' },
+								{ value: 'loose' as const, label: 'Loose' }
+							] as height}
 								<Button
-									variant={settingsStore.settings.theme === theme ? 'default' : 'outline'}
-									size="sm"
+									variant={lineHeight === height.value ? 'default' : 'outline'}
 									class="w-full"
-									onclick={() => settingsStore.setTheme(theme as any)}
+									size="sm"
+									onclick={() => settingsStore.setLineHeight(height.value)}
 								>
-									{theme.charAt(0).toUpperCase() + theme.slice(1)}
+									{height.label}
+								</Button>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Theme -->
+					<div>
+						<div class="text-sm font-medium block mb-2">Theme</div>
+						<div class="space-y-2" role="group" aria-label="Theme">
+							{#each [
+								{ value: 'light' as const, label: 'Light' },
+								{ value: 'dark' as const, label: 'Dark' },
+								{ value: 'system' as const, label: 'System' }
+							] as themeOption}
+								<Button
+									variant={theme === themeOption.value ? 'default' : 'outline'}
+									class="w-full"
+									size="sm"
+									onclick={() => settingsStore.setTheme(themeOption.value)}
+								>
+									{themeOption.label}
 								</Button>
 							{/each}
 						</div>
 					</div>
 				</div>
-			</aside>
+			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</div>

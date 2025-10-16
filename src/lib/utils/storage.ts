@@ -11,16 +11,27 @@ localforage.config({
 });
 
 export async function saveBooks(books: Book[]): Promise<void> {
-	await localforage.setItem(BOOKS_KEY, books);
+	// Deep clone to remove any proxy objects and serialize dates
+	const serialized = JSON.parse(JSON.stringify(books));
+	await localforage.setItem(BOOKS_KEY, serialized);
 }
 
 export async function loadBooks(): Promise<Book[]> {
 	const books = await localforage.getItem<Book[]>(BOOKS_KEY);
-	return books || [];
+	if (!books) return [];
+	
+	// Restore Date objects
+	return books.map(book => ({
+		...book,
+		uploadDate: new Date(book.uploadDate),
+		lastRead: book.lastRead ? new Date(book.lastRead) : undefined
+	}));
 }
 
 export async function saveReaderState(state: ReaderState): Promise<void> {
-	await localforage.setItem(READER_STATE_KEY, state);
+	// Deep clone to remove any proxy objects
+	const serialized = JSON.parse(JSON.stringify(state));
+	await localforage.setItem(READER_STATE_KEY, serialized);
 }
 
 export async function loadReaderState(): Promise<ReaderState> {
@@ -35,7 +46,9 @@ export async function loadReaderState(): Promise<ReaderState> {
 }
 
 export async function saveSettings(settings: ReaderSettings): Promise<void> {
-	await localforage.setItem(SETTINGS_KEY, settings);
+	// Deep clone to remove any proxy objects
+	const serialized = JSON.parse(JSON.stringify(settings));
+	await localforage.setItem(SETTINGS_KEY, serialized);
 }
 
 export async function loadSettings(): Promise<ReaderSettings> {

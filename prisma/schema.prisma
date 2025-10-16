@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("user") // "admin", "user", "guest"
+  canUpload    Boolean  @default(false)
+  canDelete    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  uploadedBooks Book[]             @relation("UploadedBy")
+  progress      UserBookProgress[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Book {
+  id           String   @id @default(cuid())
+  title        String
+  author       String?
+  format       String // "epub", "mobi", "pdf"
+  uploadedById String
+  uploadDate   DateTime @default(now())
+  filePath     String // Path to original file on disk
+  coverImage   String? // Base64 or URL to cover
+  markdown     String // Full markdown content (for backward compat, may be large)
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  uploadedBy User               @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: Cascade)
+  chapters   Chapter[]
+  progress   UserBookProgress[]
+
+  @@index([uploadedById])
+  @@map("books")
+}
+
+model Chapter {
+  id      String @id @default(cuid())
+  bookId  String
+  title   String
+  content String // Markdown content
+  level   Int // Heading level (1-6)
+  order   Int // Chapter order
+
+  // Relations
+  book     Book               @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  progress UserBookProgress[] @relation("CurrentChapter")
+
+  @@index([bookId])
+  @@map("chapters")
+}
+
+model UserBookProgress {
+  id               String    @id @default(cuid())
+  userId           String
+  bookId           String
+  currentChapterId String?
+  progress         Float     @default(0) // Percentage (0-100)
+  lastRead         DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book           Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  currentChapter Chapter? @relation("CurrentChapter", fields: [currentChapterId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+  @@map("user_book_progress")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
