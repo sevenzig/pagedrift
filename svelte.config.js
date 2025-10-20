@@ -17,7 +17,7 @@ const config = {
 			precompress: false,
 			envPrefix: '',
 			polyfill: false,
-			bodySize: 52428800  // 50MB in bytes (50 * 1024 * 1024)
+			bodySize: 1073741824  // 1GB in bytes (1024 * 1024 * 1024)
 		}),
 		csrf: {
 			trustedOrigins: [

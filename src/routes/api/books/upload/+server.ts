@@ -53,10 +53,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Validate file size (50MB max)
-		const MAX_SIZE = 50 * 1024 * 1024;
+		// Validate file size (1GB max)
+		const MAX_SIZE = 1024 * 1024 * 1024;
 		if (file.size > MAX_SIZE) {
-			return json({ error: 'File size exceeds 50MB limit' }, { status: 400 });
+			return json({ error: 'File size exceeds 1GB limit' }, { status: 400 });
 		}
 
 		// Validate file format

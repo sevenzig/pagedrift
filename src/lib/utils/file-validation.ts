@@ -1,4 +1,4 @@
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
 const ALLOWED_TYPES = {
 	epub: ['application/epub+zip'],
 	pdf: ['application/pdf'],
@@ -23,7 +23,7 @@ export function validateFile(file: File): { valid: boolean; error?: string } {
 	if (file.size > MAX_FILE_SIZE) {
 		return {
 			valid: false,
-			error: `File size exceeds 50MB limit. File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+			error: `File size exceeds 1GB limit. File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
 		};
 	}
 

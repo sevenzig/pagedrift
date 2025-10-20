@@ -33,15 +33,15 @@
         async function handleFiles(files: File[]) {
                 error = null;
 
-                // Basic validation
-                const MAX_SIZE = 50 * 1024 * 1024; // 50MB
-                const validFiles: File[] = [];
+		// Basic validation
+		const MAX_SIZE = 1024 * 1024 * 1024; // 1GB
+		const validFiles: File[] = [];
 
-                for (const file of files) {
-                        if (file.size > MAX_SIZE) {
-                                error = `File "${file.name}" exceeds 50MB limit`;
-                                continue;
-                        }
+		for (const file of files) {
+			if (file.size > MAX_SIZE) {
+				error = `File "${file.name}" exceeds 1GB limit`;
+				continue;
+			}
 
                         const filename = file.name.toLowerCase();
                         if (!filename.endsWith('.epub') && !filename.endsWith('.pdf') && !filename.endsWith('.mobi')) {
