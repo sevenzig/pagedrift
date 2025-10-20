@@ -16,10 +16,16 @@ const config = {
 			out: 'build',
 			precompress: false,
 			envPrefix: '',
-			polyfill: false
+			polyfill: false,
+			bodySize: 52428800  // 50MB in bytes (50 * 1024 * 1024)
 		}),
 		csrf: {
-			trustedOrigins: ['https://books.phelddagrif.farm', 'http://localhost:3000', 'http://localhost:5173']
+			trustedOrigins: [
+				'https://books.phelddagrif.farm',
+				'http://localhost:3000',
+				'http://localhost:5173',
+				'http://localhost:7000'  // Local Docker testing
+			]
 		}
 	}
 };
