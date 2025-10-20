@@ -1,5 +1,5 @@
 import type { ReaderSettings } from '$lib/types';
-import { saveSettings, loadSettings } from '$lib/utils/storage';
+import { saveSettings, loadSettings } from '$lib/utils/client-storage';
 
 class SettingsStore {
 	settings = $state<ReaderSettings>({
@@ -10,10 +10,12 @@ class SettingsStore {
 	});
 
 	showSettings = $state(false);
+	private mediaQueryListener: ((e: MediaQueryListEvent) => void) | null = null;
 
 	async init() {
 		this.settings = await loadSettings();
 		this.applyTheme();
+		this.setupSystemThemeListener();
 	}
 
 	async setFontSize(size: ReaderSettings['fontSize']) {
@@ -35,6 +37,7 @@ class SettingsStore {
 		this.settings.theme = theme;
 		await saveSettings(this.settings);
 		this.applyTheme();
+		this.setupSystemThemeListener();
 	}
 
 	applyTheme() {
@@ -52,6 +55,23 @@ class SettingsStore {
 			} else {
 				root.classList.remove('dark');
 			}
+		}
+	}
+
+	setupSystemThemeListener() {
+		// Clean up existing listener if any
+		if (this.mediaQueryListener) {
+			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+			mediaQuery.removeEventListener('change', this.mediaQueryListener);
+		}
+
+		// Only add listener if theme is set to 'system'
+		if (this.settings.theme === 'system') {
+			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+			this.mediaQueryListener = () => {
+				this.applyTheme();
+			};
+			mediaQuery.addEventListener('change', this.mediaQueryListener);
 		}
 	}
 }

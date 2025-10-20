@@ -4,9 +4,9 @@ import { requirePermission } from '$lib/server/middleware/permissions';
 import { createBook } from '$lib/server/db/books';
 import { parseBook } from '$lib/server/parsers';
 import { indexBook } from '$lib/server/search/indexing';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { saveBookFile } from '$lib/utils/storage';
 import { env } from '$env/dynamic/private';
+import { isValidContentType } from '$lib/constants/content-types';
 
 const BOOKS_STORAGE_PATH = env.BOOKS_STORAGE_PATH || './data/books';
 
@@ -24,6 +24,33 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (!file) {
 			return json({ error: 'No file provided' }, { status: 400 });
+		}
+
+		// Get staging metadata from form data
+		const contentType = formData.get('contentType') as string;
+		const tagsJson = formData.get('tags') as string;
+		const title = formData.get('title') as string | null;
+		const author = formData.get('author') as string | null;
+		const publicationYear = formData.get('publicationYear') as string | null;
+		const isbn = formData.get('isbn') as string | null;
+		const description = formData.get('description') as string | null;
+
+		// Validate content type (required)
+		if (!contentType || !isValidContentType(contentType)) {
+			return json({ error: 'Valid content type is required' }, { status: 400 });
+		}
+
+		// Parse tags
+		let tags: string[] = [];
+		if (tagsJson) {
+			try {
+				tags = JSON.parse(tagsJson);
+				if (!Array.isArray(tags)) {
+					tags = [];
+				}
+			} catch {
+				tags = [];
+			}
 		}
 
 		// Validate file size (50MB max)
@@ -52,20 +79,43 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Parse the book
 		const parsed = await parseBook(buffer, file.name, format);
 
-		// Generate book ID
-		const bookId = Math.random().toString(36).substring(2, 15);
+		// Override parsed metadata with user-provided values
+		if (parsed.metadata) {
+			parsed.metadata.fileSize = buffer.length;
+			if (title) parsed.metadata.title = title;
+			if (author) parsed.metadata.author = author;
+			if (isbn) parsed.metadata.isbn = isbn;
+			if (description) parsed.metadata.description = description;
+			if (publicationYear) {
+				const year = parseInt(publicationYear);
+				if (!isNaN(year)) {
+					parsed.metadata.publicationYear = year;
+				}
+			}
+		}
 
-		// Save file to disk
-		const bookDir = join(BOOKS_STORAGE_PATH, bookId);
-		await mkdir(bookDir, { recursive: true });
-		const filePath = join(bookDir, file.name);
-		await writeFile(filePath, buffer);
+		// Use user-provided title/author if available, otherwise use parsed values
+		const finalTitle = title || parsed.title;
+		const finalAuthor = author || parsed.author;
 
-		// Create book in database
+		// Save file using organized storage structure
+		const { filePath, storagePath } = await saveBookFile(
+			buffer,
+			parsed.metadata || { title: finalTitle, author: finalAuthor },
+			file.name,
+			{
+				basePath: BOOKS_STORAGE_PATH,
+				createDirectories: true,
+				handleConflicts: true
+			}
+		);
+
+		// Create book in database with staging metadata
 		const book = await createBook({
-			title: parsed.title,
-			author: parsed.author,
+			title: finalTitle,
+			author: finalAuthor,
 			format,
+			contentType,
 			uploadedById: locals.user.id,
 			filePath,
 			coverImage: parsed.coverImage,
@@ -75,12 +125,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				content: chapter.content,
 				level: chapter.level,
 				order: index
-			}))
+			})),
+			metadata: parsed.metadata,
+			tags,
+			firstPagesText: parsed.firstPagesText
 		});
 
-		// Index in Meilisearch
+		// Index in Meilisearch with tags
 		try {
-			await indexBook(book, book.chapters);
+			// Fetch book with tags for indexing
+			const bookWithTags = await db.book.findUnique({
+				where: { id: book.id },
+				include: {
+					tags: {
+						include: {
+							tag: true
+						}
+					}
+				}
+			});
+			await indexBook(book, book.chapters, bookWithTags?.tags);
 		} catch (searchError) {
 			console.error('Failed to index book in Meilisearch:', searchError);
 			// Don't fail the upload if search indexing fails

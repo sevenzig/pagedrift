@@ -1,10 +1,10 @@
-# EBook Reader - Local Development Setup
+# PageDrift - Local Development Setup
 
 ## Quick Start (Windows PowerShell)
 
 1. **Navigate to project directory:**
    ```powershell
-   cd C:\Users\scootypuffjr\Projects\ebook-reader\EBookVoyage\EBookVoyage
+   cd C:\Users\scootypuffjr\Projects\ebook-reader\pagedrift\pagedrift
    ```
 
 2. **Install dependencies:**

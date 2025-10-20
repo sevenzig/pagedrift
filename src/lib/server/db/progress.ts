@@ -18,6 +18,7 @@ export async function updateProgress(
 	data: {
 		currentChapterId?: string | null;
 		progress?: number;
+		scrollPosition?: number;
 	}
 ): Promise<UserBookProgress> {
 	return db.userBookProgress.upsert({
@@ -36,6 +37,7 @@ export async function updateProgress(
 			bookId,
 			currentChapterId: data.currentChapterId || null,
 			progress: data.progress || 0,
+			scrollPosition: data.scrollPosition || 0,
 			lastRead: new Date()
 		}
 	});

@@ -1,13 +1,28 @@
 .DS_Store
 node_modules
-/build
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
 /.svelte-kit
-/package
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
 .env
 .env.*
 !.env.example
+!.env.docker
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 data
 *.db
 *.db-journal
+
+# Folders
+/planning_docs

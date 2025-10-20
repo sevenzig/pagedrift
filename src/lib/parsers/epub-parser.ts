@@ -65,16 +65,60 @@ export async function parseEpub(file: File): Promise<Omit<Book, 'id' | 'uploadDa
                         }
                 });
 
-                // Add rule for better paragraph spacing (single newline between paragraphs)
-                turndownService.addRule('paragraphs', {
-                        filter: 'p',
-                        replacement: function (content) {
-                                const trimmed = content.trim();
-                                return trimmed ? '\n' + trimmed + '\n' : '';
-                        }
-                });
+		// Add rule for better paragraph spacing (single newline between paragraphs)
+		turndownService.addRule('paragraphs', {
+			filter: 'p',
+			replacement: function (content) {
+				const trimmed = content.trim();
+				return trimmed ? '\n' + trimmed + '\n' : '';
+			}
+		});
 
-                const arrayBuffer = await file.arrayBuffer();
+		// Add rule for converting internal EPUB links to anchor links
+		turndownService.addRule('internalLinks', {
+			filter: function (node: any) {
+				return (
+					node.nodeName === 'A' &&
+					node.getAttribute('href')
+				);
+			},
+			replacement: function (content, node: any) {
+				const href = node.getAttribute('href') || '';
+				const text = content.trim() || '';
+				
+				// Check if this is an internal EPUB link
+				const isInternalLink = 
+					href.includes('.xhtml') ||
+					href.includes('.html') ||
+					href.startsWith('#');
+				
+				if (isInternalLink) {
+					// Extract the anchor ID from the href
+					// For hrefs like "brw-richman-0004.xhtml#rch05", extract "#rch05"
+					// For hrefs like "#rch05", use as-is
+					let anchorId = '';
+					
+					if (href.includes('#')) {
+						anchorId = '#' + href.split('#')[1];
+					}
+					
+					// If we have an anchor ID, create an HTML anchor link
+					// Otherwise, just return the text content
+					if (anchorId) {
+						return `<a href="${anchorId}">${text}</a>`;
+					} else {
+						return text;
+					}
+				} else {
+					// External link - preserve as markdown
+					const title = node.getAttribute('title');
+					const titlePart = title ? ` "${title}"` : '';
+					return `[${text}](${href}${titlePart})`;
+				}
+			}
+		});
+
+		const arrayBuffer = await file.arrayBuffer();
                 const book = ePub(arrayBuffer);
 
                 await book.ready;

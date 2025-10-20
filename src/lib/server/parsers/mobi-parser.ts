@@ -1,4 +1,5 @@
 import type { Chapter } from '$lib/types';
+import { extractAndNormalizeMetadata, type BookMetadata } from '$lib/utils/metadata';
 
 interface ParsedBook {
 	title: string;
@@ -6,6 +7,8 @@ interface ParsedBook {
 	coverImage?: string;
 	markdown: string;
 	chapters: Omit<Chapter, 'id'>[];
+	metadata?: BookMetadata;
+	firstPagesText?: string;
 }
 
 function cleanMobiText(text: string): string {
@@ -52,6 +55,11 @@ function generateId(): string {
 export async function parseMobi(buffer: Buffer, filename: string): Promise<ParsedBook> {
 	try {
 		const title = filename.replace(/\.mobi$/i, '');
+		
+		// Generate normalized metadata (MOBI files have limited metadata)
+		const bookMetadata = extractAndNormalizeMetadata(title, undefined, {
+			pageCount: Math.ceil(buffer.length / 1000) // Rough estimate
+		});
 
 		// Try different encodings
 		let text = '';
@@ -103,12 +111,19 @@ export async function parseMobi(buffer: Buffer, filename: string): Promise<Parse
 			throw new Error('No readable content found in MOBI file');
 		}
 
+		// Extract first chapter text (limited to 5000 chars)
+		const firstPagesText = validChapters.length > 0 
+			? validChapters[0].content.substring(0, 5000)
+			: '';
+
 		return {
 			title,
 			author: undefined,
 			coverImage: undefined,
 			markdown: fullMarkdown.trim(),
-			chapters: validChapters
+			chapters: validChapters,
+			metadata: bookMetadata,
+			firstPagesText
 		};
 	} catch (error) {
 		console.error('MOBI parsing error:', error);

@@ -33,8 +33,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// Check if this is the first user (will become admin)
 		const firstUser = await isFirstUser();
 		const role = firstUser ? 'admin' : 'user';
-		const canUpload = firstUser; // First user (admin) can upload
-		const canDelete = firstUser; // First user (admin) can delete
+		const canUpload = firstUser ? true : true; // First user (admin) and regular users can upload by default
+		const canDelete = firstUser ? true : false; // Only first user (admin) can delete by default
 
 		// Hash password and create user
 		const passwordHash = await hashPassword(password);

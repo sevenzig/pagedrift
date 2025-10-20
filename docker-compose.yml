@@ -9,6 +9,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - PORT=3000
       - DATABASE_URL=file:/app/data/db/sqlite.db
       - JWT_SECRET=${JWT_SECRET}
       - MEILISEARCH_HOST=http://meilisearch:7700
@@ -18,7 +19,14 @@ services:
     volumes:
       - ./data:/app/data
     depends_on:
-      - meilisearch
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/me"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
 
   meilisearch:
@@ -30,6 +38,12 @@ services:
       - MEILI_ENV=production
     volumes:
       - ./data/meili_data:/meili_data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
 volumes:

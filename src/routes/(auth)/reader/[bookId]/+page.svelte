@@ -5,5 +5,5 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<Reader book={data.book} initialProgress={data.progress} />
+<Reader book={data.book} initialProgress={data.restart ? null : data.progress} />
 

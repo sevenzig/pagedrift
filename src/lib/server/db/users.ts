@@ -56,3 +56,4 @@ export async function isFirstUser(): Promise<boolean> {
 	return count === 0;
 }
 
+

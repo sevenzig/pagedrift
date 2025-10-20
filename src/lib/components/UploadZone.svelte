@@ -1,14 +1,12 @@
 <script lang="ts">
         import { onMount } from 'svelte';
-        import { invalidateAll } from '$app/navigation';
         import Button from './ui/Button.svelte';
         import Card from './ui/Card.svelte';
+        import { uploadQueue } from '$lib/stores/upload-queue.svelte';
 
         let dragging = $state(false);
-        let uploading = $state(false);
+        let processing = $state(false);
         let error = $state<string | null>(null);
-        let success = $state<string | null>(null);
-        let uploadProgress = $state<string>('');
         let fileInput: HTMLInputElement;
 
         // Prevent default drag behavior globally to stop browser from opening files
@@ -32,34 +30,59 @@
                 };
         });
 
-        async function handleFile(file: File) {
+        async function handleFiles(files: File[]) {
                 error = null;
-                success = null;
-                uploadProgress = '';
 
                 // Basic validation
                 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
-                if (file.size > MAX_SIZE) {
-                        error = 'File size exceeds 50MB limit';
+                const validFiles: File[] = [];
+
+                for (const file of files) {
+                        if (file.size > MAX_SIZE) {
+                                error = `File "${file.name}" exceeds 50MB limit`;
+                                continue;
+                        }
+
+                        const filename = file.name.toLowerCase();
+                        if (!filename.endsWith('.epub') && !filename.endsWith('.pdf') && !filename.endsWith('.mobi')) {
+                                error = `File "${file.name}" is not supported. Only EPUB, PDF, and MOBI files are allowed.`;
+                                continue;
+                        }
+
+                        validFiles.push(file);
+                }
+
+                if (validFiles.length === 0) {
                         return;
                 }
 
-                const filename = file.name.toLowerCase();
-                if (!filename.endsWith('.epub') && !filename.endsWith('.pdf') && !filename.endsWith('.mobi')) {
-                        error = 'Only EPUB, PDF, and MOBI files are supported';
-                        return;
-                }
+                // Add files to queue
+                uploadQueue.addFiles(validFiles);
 
-                uploading = true;
-                uploadProgress = 'Uploading file...';
+                // Fetch preview for each file
+                processing = true;
+                for (const file of validFiles) {
+                        await fetchPreview(file);
+                }
+                processing = false;
+
+                // Reset file input
+                if (fileInput) {
+                        fileInput.value = '';
+                }
+        }
+
+        async function fetchPreview(file: File) {
+                const queuedFile = uploadQueue.files.find(f => f.file === file);
+                if (!queuedFile) return;
+
+                uploadQueue.updateStatus(queuedFile.id, 'previewing');
 
                 try {
                         const formData = new FormData();
                         formData.append('file', file);
 
-                        uploadProgress = 'Processing book...';
-
-                        const response = await fetch('/api/books/upload', {
+                        const response = await fetch('/api/books/preview', {
                                 method: 'POST',
                                 body: formData
                         });
@@ -67,31 +90,19 @@
                         const data = await response.json();
 
                         if (!response.ok) {
-                                throw new Error(data.error || 'Upload failed');
+                                throw new Error(data.error || 'Preview failed');
                         }
 
-                        // Reset file input after successful upload
-                        if (fileInput) {
-                                fileInput.value = '';
-                        }
-
-                        success = `Successfully uploaded "${data.book.title}"!`;
-                        uploadProgress = '';
-                        
-                        // Refresh the page data
-                        await invalidateAll();
-                        
-                        // Clear success message after 3 seconds
-                        setTimeout(() => {
-                                success = null;
-                        }, 3000);
+                        uploadQueue.updatePreview(queuedFile.id, data.preview);
                 } catch (err) {
-                        console.error('Upload error:', err);
-                        error = err instanceof Error ? err.message : 'Failed to upload book';
-                        uploadProgress = '';
-                } finally {
-                        uploading = false;
+                        console.error('Preview error:', err);
+                        const errorMsg = err instanceof Error ? err.message : 'Failed to preview file';
+                        uploadQueue.updateStatus(queuedFile.id, 'error', errorMsg);
                 }
+        }
+
+        async function handleFile(file: File) {
+                await handleFiles([file]);
         }
 
 	function handleDrop(e: DragEvent) {
@@ -101,8 +112,8 @@
 
 		const files = e.dataTransfer?.files;
 		if (files && files.length > 0) {
-			console.log('File dropped:', files[0].name);
-			handleFile(files[0]);
+			console.log('Files dropped:', files.length);
+			handleFiles(Array.from(files));
 		}
 	}
 
@@ -127,8 +138,8 @@
         function handleFileSelect(e: Event) {
                 const input = e.target as HTMLInputElement;
                 if (input.files && input.files.length > 0) {
-                        console.log('File selected:', input.files[0].name);
-                        handleFile(input.files[0]);
+                        console.log('Files selected:', input.files.length);
+                        handleFiles(Array.from(input.files));
                 }
         }
 
@@ -158,28 +169,22 @@
 		onkeydown={(e) => e.key === 'Enter' && openFileDialog()}
 		onclick={openFileDialog}
 	>
-                {#if uploading}
+                {#if processing}
                         <div class="space-y-4">
-                                <div class="text-lg font-medium">Processing book...</div>
+                                <div class="text-lg font-medium">Processing files...</div>
                                 <div class="text-sm text-muted-foreground">This may take a moment</div>
                         </div>
                 {:else}
                         <div class="space-y-4">
                                 <div class="text-4xl">📚</div>
                                 <div class="space-y-2">
-                                        <h3 class="text-xl font-semibold">Upload your eBook</h3>
+                                        <h3 class="text-xl font-semibold">Upload your eBooks</h3>
                                         <p class="text-sm text-muted-foreground">
-                                                Drag and drop an EPUB, MOBI, or PDF file here, or click to browse
+                                                Drag and drop EPUB, MOBI, or PDF files here, or click to browse
                                         </p>
                                 </div>
-                                <Button onclick={openFileDialog}>Select File</Button>
-                                <p class="text-xs text-muted-foreground">Maximum file size: 50MB</p>
-                        </div>
-                {/if}
-
-                {#if success}
-                        <div class="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-sm">
-                                {success}
+                                <Button onclick={openFileDialog}>Select Files</Button>
+                                <p class="text-xs text-muted-foreground">Maximum file size: 50MB per file. Multiple files supported.</p>
                         </div>
                 {/if}
 
@@ -194,6 +199,7 @@
                 bind:this={fileInput}
                 type="file"
                 accept=".epub,.mobi,.pdf"
+                multiple
                 onchange={handleFileSelect}
                 class="hidden"
                 id="file-upload-input"

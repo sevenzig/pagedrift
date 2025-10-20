@@ -1,5 +1,5 @@
 import type { Book } from '$lib/types';
-import { saveBooks, loadBooks } from '$lib/utils/storage';
+import { saveBooks, loadBooks } from '$lib/utils/client-storage';
 
 class BooksStore {
 	books = $state<Book[]>([]);

@@ -1,4 +1,4 @@
-# EBook Voyage
+# PageDrift
 
 A multi-user, server-side rendered eBook reader platform with authentication, permissions, and full-text search. Think Plex/Jellyfin for books—a shared library that everyone can access and read from any device.
 
@@ -40,6 +40,28 @@ Book
 UserBookProgress (tracks reading progress per user per book)
 ```
 
+## 🚀 Quick Start with Docker
+
+**For first-time Docker deployment, see [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) for a complete guide.**
+
+Quick setup:
+
+```bash
+# 1. Copy environment file
+cp .env.docker .env
+
+# 2. Generate secure secrets
+openssl rand -base64 32  # Use for JWT_SECRET
+openssl rand -base64 32  # Use for MEILISEARCH keys
+
+# 3. Edit .env and update the secrets and ORIGIN
+
+# 4. Start services
+docker-compose up -d
+
+# 5. Register first user at http://localhost:3000/register
+```
+
 ## 🚀 Deployment to Dokploy
 
 ### Prerequisites
@@ -55,7 +77,7 @@ UserBookProgress (tracks reading progress per user per book)
    git init
    git add .
    git commit -m "Initial commit"
-   git remote add origin https://github.com/yourusername/ebook-voyage.git
+   git remote add origin https://github.com/yourusername/pagedrift.git
    git push -u origin master
    ```
 

@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { Chapter } from '$lib/types';
+import { extractAndNormalizeMetadata, type BookMetadata } from '$lib/utils/metadata';
 
 interface ParsedBook {
 	title: string;
@@ -7,6 +8,8 @@ interface ParsedBook {
 	coverImage?: string;
 	markdown: string;
 	chapters: Omit<Chapter, 'id'>[];
+	metadata?: BookMetadata;
+	firstPagesText?: string;
 }
 
 function cleanPdfText(text: string): string {
@@ -53,6 +56,41 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 		// Extract metadata
 		const metadata = await pdf.getMetadata();
 		const author = metadata.info?.Author || undefined;
+		
+		// Extract additional metadata from PDF info
+		const additionalMetadata: Record<string, any> = {};
+		
+		if (metadata.info) {
+			// Publisher
+			if (metadata.info.Producer) {
+				additionalMetadata.publisher = metadata.info.Producer;
+			}
+			
+			// Creation date
+			if (metadata.info.CreationDate) {
+				additionalMetadata.publicationYear = metadata.info.CreationDate;
+			}
+			
+			// Subject/Description
+			if (metadata.info.Subject) {
+				additionalMetadata.description = metadata.info.Subject;
+			}
+			
+			// Keywords
+			if (metadata.info.Keywords) {
+				additionalMetadata.subjects = metadata.info.Keywords.split(/[,;]/).map(s => s.trim());
+			}
+		}
+		
+		// Page count
+		additionalMetadata.pageCount = numPages;
+		
+		// Generate normalized metadata
+		const bookMetadata = extractAndNormalizeMetadata(title, author, additionalMetadata);
+
+		// Store text from first 5 pages for metadata extraction
+		let firstPagesText = '';
+		const firstPagesCount = Math.min(5, numPages);
 
 		for (let pageNum = 1; pageNum <= numPages; pageNum++) {
 			try {
@@ -87,6 +125,14 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 				});
 
 				pageText = cleanPdfText(pageText);
+
+				// Collect first pages text
+				if (pageNum <= firstPagesCount && pageText.trim()) {
+					firstPagesText += pageText + '\n\n';
+					if (firstPagesText.length > 5000) {
+						firstPagesText = firstPagesText.substring(0, 5000);
+					}
+				}
 
 				if (pageText.trim()) {
 					const chunkSize = 10;
@@ -140,7 +186,9 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 			author,
 			coverImage: undefined,
 			markdown: fullMarkdown.trim(),
-			chapters: validChapters
+			chapters: validChapters,
+			metadata: bookMetadata,
+			firstPagesText: firstPagesText.substring(0, 5000)
 		};
 	} catch (error) {
 		console.error('PDF parsing error:', error);

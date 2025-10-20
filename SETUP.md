@@ -1,6 +1,6 @@
-# Setup Guide - EBook Voyage
+# Setup Guide - PageDrift
 
-This guide will help you get EBook Voyage running from scratch.
+This guide will help you get PageDrift running from scratch.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ Before you begin, ensure you have:
 ### Step 1: Install Dependencies
 
 ```bash
-cd EBookVoyage/EBookVoyage
+cd pagedrift/pagedrift
 npm install
 ```
 
@@ -273,7 +273,7 @@ As admin, you can:
 After setup, your directory structure looks like:
 
 ```
-EBookVoyage/EBookVoyage/
+pagedrift/pagedrift/
 ├── .env                    # Environment variables
 ├── docker-compose.yml      # Docker configuration
 ├── Dockerfile             # App container definition

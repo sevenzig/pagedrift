@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils/cn';
 
 	interface Props {
-		variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+		variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'accent' | 'success';
 		size?: 'sm' | 'md' | 'lg';
 		class?: string;
 		onclick?: (e: MouseEvent) => void;
@@ -21,12 +21,15 @@
 		children
 	}: Props = $props();
 
+	// Enhanced variant classes with PageDrift colors and animations
 	const variantClasses = {
-		default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-		secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-		outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-		ghost: 'hover:bg-accent hover:text-accent-foreground',
-		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+		default: 'btn-primary',
+		secondary: 'btn-secondary', 
+		outline: 'btn-outline',
+		ghost: 'btn-ghost',
+		destructive: 'btn-destructive',
+		accent: 'btn-accent',
+		success: 'btn-success'
 	};
 
 	const sizeClasses = {
@@ -35,14 +38,27 @@
 		lg: 'h-11 px-8 text-lg'
 	};
 
+	// Enhanced click handler with animation feedback
+	function handleClick(e: MouseEvent) {
+		if (disabled) return;
+		
+		// Add a subtle scale animation on click
+		const button = e.currentTarget as HTMLButtonElement;
+		button.style.transform = 'scale(0.98)';
+		setTimeout(() => {
+			button.style.transform = '';
+		}, 100);
+		
+		onclick?.(e);
+	}
 </script>
 
 <button
-	onclick={onclick}
+	onclick={handleClick}
 	{disabled}
 	{type}
 	class={cn(
-		'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+		'btn-enhanced inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
 		variantClasses[variant],
 		sizeClasses[size],
 		className

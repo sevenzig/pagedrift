@@ -73,22 +73,87 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Only admins can update book metadata
-		if (locals.user.role !== 'admin') {
-			return json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+		// Only admins can update book metadata (or users with upload permission for their own books)
+		const existingBook = await getBookById(params.id);
+		if (!existingBook) {
+			return json({ error: 'Book not found' }, { status: 404 });
 		}
 
-		const { title, author, coverImage } = await request.json();
+		// Allow admins or the original uploader to edit
+		if (locals.user.role !== 'admin' && existingBook.uploadedById !== locals.user.id) {
+			return json({ error: 'Forbidden: You can only edit your own books' }, { status: 403 });
+		}
 
-		const book = await updateBook(params.id, {
-			title,
-			author,
-			coverImage
-		});
+		const { 
+			title, 
+			author, 
+			coverImage, 
+			contentType, 
+			publicationYear, 
+			isbn, 
+			description, 
+			publisher,
+			tags 
+		} = await request.json();
 
-		// Update in Meilisearch
+		console.log('Update request data:', { title, author, contentType, publicationYear, isbn, publisher, tags });
+
+		// Convert publicationYear to number if it's a string, handle empty strings
+		let yearAsNumber: number | undefined = undefined;
+		if (publicationYear !== null && publicationYear !== undefined && publicationYear !== '') {
+			const parsed = parseInt(publicationYear.toString(), 10);
+			if (!isNaN(parsed)) {
+				yearAsNumber = parsed;
+			}
+		}
+
+		console.log('Converted year:', yearAsNumber);
+
+		let book;
 		try {
-			await updateBookInIndex(params.id, { title, author, coverImage });
+			book = await updateBook(params.id, {
+				title,
+				author,
+				coverImage,
+				contentType,
+				publicationYear: yearAsNumber,
+				isbn,
+				description,
+				publisher,
+				tags
+			});
+			console.log('Book updated successfully');
+		} catch (dbError) {
+			console.error('Database update error:', dbError);
+			throw dbError;
+		}
+
+		// Update in Meilisearch with tags
+		try {
+			// Get tag names for search index
+			const bookWithTags = await db.book.findUnique({
+				where: { id: params.id },
+				include: {
+					tags: {
+						include: {
+							tag: true
+						}
+					}
+				}
+			});
+			const tagNames = bookWithTags?.tags.map(bt => bt.tag.name) || [];
+			
+			await updateBookInIndex(params.id, { 
+				title, 
+				author, 
+				coverImage,
+				contentType,
+				publicationYear: yearAsNumber,
+				isbn,
+				description,
+				publisher,
+				tags: tagNames
+			});
 		} catch (searchError) {
 			console.error('Failed to update book in Meilisearch:', searchError);
 		}
@@ -96,7 +161,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		return json({ book });
 	} catch (error) {
 		console.error('Update error:', error);
-		return json({ error: 'Update failed' }, { status: 500 });
+		// Return detailed error message for debugging
+		const errorMessage = error instanceof Error ? error.message : 'Update failed';
+		console.error('Full error details:', errorMessage);
+		return json({ error: errorMessage }, { status: 500 });
 	}
 };
 

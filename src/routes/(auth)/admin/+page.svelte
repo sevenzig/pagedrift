@@ -95,7 +95,7 @@
 										<select
 											id="role-{user.id}"
 											bind:value={editForm.role}
-											class="w-full px-3 py-2 border rounded-lg"
+											class="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
 										>
 											<option value="admin">Admin</option>
 											<option value="user">User</option>

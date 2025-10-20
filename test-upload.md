@@ -38,7 +38,7 @@
 
 1. **Start the dev server:**
    ```powershell
-   cd C:\Users\scootypuffjr\Projects\ebook-reader\EBookVoyage\EBookVoyage
+   cd C:\Users\scootypuffjr\Projects\ebook-reader\pagedrift\pagedrift
    npm run dev
    ```
 

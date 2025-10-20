@@ -1,9 +1,16 @@
 import { searchClient, BOOKS_INDEX, CHAPTERS_INDEX } from './client';
 import type { Book, Chapter } from '@prisma/client';
 
-export async function indexBook(book: Book, chapters: Chapter[]) {
+export async function indexBook(
+	book: Book,
+	chapters: Chapter[],
+	tags?: Array<{ tag: { name: string } }>
+) {
 	try {
-		// Index book metadata
+		// Flatten tags to array of strings for searching
+		const tagNames = tags?.map((bt) => bt.tag.name) || [];
+
+		// Index book metadata with all fields
 		const booksIndex = searchClient.index(BOOKS_INDEX);
 		await booksIndex.addDocuments([
 			{
@@ -13,7 +20,19 @@ export async function indexBook(book: Book, chapters: Chapter[]) {
 				format: book.format,
 				uploadedById: book.uploadedById,
 				uploadDate: book.uploadDate.toISOString(),
-				coverImage: book.coverImage
+				coverImage: book.coverImage,
+				// Enhanced metadata fields
+				isbn: book.isbn,
+				publisher: book.publisher,
+				publicationYear: book.publicationYear,
+				language: book.language,
+				description: book.description,
+				subjects: book.subjects,
+				pageCount: book.pageCount,
+				fileSize: book.fileSize,
+				contentType: book.contentType,
+				// Tags as searchable array
+				tags: tagNames
 			}
 		]);
 
@@ -60,6 +79,13 @@ export async function updateBookInIndex(
 		title?: string;
 		author?: string;
 		coverImage?: string;
+		isbn?: string | null;
+		publisher?: string | null;
+		publicationYear?: number | null;
+		language?: string | null;
+		description?: string | null;
+		contentType?: string;
+		tags?: string[];
 	}
 ) {
 	try {

@@ -87,3 +87,4 @@ CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
 -- CreateIndex
 CREATE INDEX "sessions_token_idx" ON "sessions"("token");
 
+

@@ -1,7 +1,7 @@
 {
-	"name": "ebook-voyage",
+	"name": "pagedrift",
 	"private": true,
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -12,10 +12,14 @@
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:deploy": "prisma migrate deploy",
-		"prisma:studio": "prisma studio"
+		"prisma:studio": "prisma studio",
+		"commit": "npx git-cz",
+		"commit:retry": "npx git-cz --retry"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "^5.4.0",
+		"@commitlint/cli": "^20.1.0",
+		"@commitlint/config-conventional": "^20.0.0",
+		"@commitlint/cz-commitlint": "^20.1.0",
 		"@sveltejs/kit": "^2.47.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@types/adm-zip": "^0.5.7",
@@ -25,6 +29,8 @@
 		"@types/markdown-it": "^14.1.2",
 		"@types/turndown": "^5.0.5",
 		"@types/xml2js": "^0.4.14",
+		"commitizen": "^4.3.1",
+		"husky": "^9.1.7",
 		"prisma": "^6.2.1",
 		"svelte": "^5.40.1",
 		"svelte-check": "^4.3.2",
@@ -34,7 +40,7 @@
 	},
 	"dependencies": {
 		"@prisma/client": "^6.2.1",
-		"@sveltejs/adapter-auto": "^6.1.1",
+		"@sveltejs/adapter-node": "^5.4.0",
 		"@tailwindcss/postcss": "^4.1.14",
 		"@tailwindcss/vite": "^4.1.14",
 		"adm-zip": "^0.5.16",
@@ -55,6 +61,7 @@
 		"tailwind-variants": "^3.1.1",
 		"tailwindcss": "^4.1.14",
 		"turndown": "^7.2.1",
+		"turndown-plugin-gfm": "^1.0.2",
 		"xml2js": "^0.6.2"
 	}
 }

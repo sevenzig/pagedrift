@@ -2,6 +2,7 @@ import { parseEpub } from './epub-parser';
 import { parsePdf } from './pdf-parser';
 import { parseMobi } from './mobi-parser';
 import type { Chapter } from '$lib/types';
+import type { BookMetadata } from '$lib/utils/metadata';
 
 export interface ParsedBook {
 	title: string;
@@ -9,6 +10,8 @@ export interface ParsedBook {
 	coverImage?: string;
 	markdown: string;
 	chapters: Omit<Chapter, 'id'>[];
+	metadata?: BookMetadata;
+	firstPagesText?: string;
 }
 
 export async function parseBook(

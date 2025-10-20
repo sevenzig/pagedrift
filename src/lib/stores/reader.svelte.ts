@@ -1,5 +1,5 @@
 import type { ReaderState } from '$lib/types';
-import { saveReaderState, loadReaderState } from '$lib/utils/storage';
+import { saveReaderState, loadReaderState } from '$lib/utils/client-storage';
 
 class ReaderStore {
 	state = $state<ReaderState>({

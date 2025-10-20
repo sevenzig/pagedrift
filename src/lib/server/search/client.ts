@@ -37,22 +37,83 @@ export async function initializeIndexes() {
 			}
 		}
 
-		// Books index (metadata search) - configure settings
-		const booksIndex = searchClient.index(BOOKS_INDEX);
-		await booksIndex.updateSettings({
-			searchableAttributes: ['title', 'author'],
-			filterableAttributes: ['format', 'uploadedById', 'uploadDate'],
-			sortableAttributes: ['uploadDate', 'title'],
-			displayedAttributes: ['id', 'title', 'author', 'format', 'uploadDate', 'coverImage']
-		});
+	// Books index (metadata search) - configure settings
+	const booksIndex = searchClient.index(BOOKS_INDEX);
+	await booksIndex.updateSettings({
+		searchableAttributes: [
+			'title',
+			'author',
+			'description',
+			'subjects',
+			'isbn',
+			'publisher',
+			'tags'
+		],
+		filterableAttributes: [
+			'format',
+			'uploadedById',
+			'uploadDate',
+			'publicationYear',
+			'language',
+			'isbn',
+			'contentType',
+			'publisher',
+			'pageCount',
+			'fileSize',
+			'tags'
+		],
+		sortableAttributes: [
+			'uploadDate',
+			'title',
+			'author',
+			'publicationYear',
+			'fileSize',
+			'pageCount'
+		],
+		displayedAttributes: [
+			'id',
+			'title',
+			'author',
+			'format',
+			'uploadDate',
+			'coverImage',
+			'publicationYear',
+			'language',
+			'tags',
+			'description',
+			'contentType',
+			'publisher',
+			'isbn',
+			'pageCount',
+			'fileSize'
+		],
+		typoTolerance: {
+			enabled: true,
+			minWordSizeForTypos: {
+				oneTypo: 4,
+				twoTypos: 8
+			}
+		},
+		synonyms: {
+			ebook: ['electronic book', 'digital book', 'e-book'],
+			pdf: ['portable document format']
+		}
+	});
 
-		// Chapters index (full-text search) - configure settings
-		const chaptersIndex = searchClient.index(CHAPTERS_INDEX);
-		await chaptersIndex.updateSettings({
-			searchableAttributes: ['title', 'content'],
-			filterableAttributes: ['bookId'],
-			displayedAttributes: ['id', 'bookId', 'title', 'content', 'order']
-		});
+	// Chapters index (full-text search) - configure settings
+	const chaptersIndex = searchClient.index(CHAPTERS_INDEX);
+	await chaptersIndex.updateSettings({
+		searchableAttributes: ['title', 'content'],
+		filterableAttributes: ['bookId'],
+		displayedAttributes: ['id', 'bookId', 'title', 'content', 'order'],
+		typoTolerance: {
+			enabled: true,
+			minWordSizeForTypos: {
+				oneTypo: 4,
+				twoTypos: 8
+			}
+		}
+	});
 
 		console.log('Meilisearch indexes initialized successfully');
 	} catch (error) {
