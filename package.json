@@ -14,13 +14,12 @@
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:deploy": "prisma migrate deploy",
 		"prisma:studio": "prisma studio",
-		"commit": "npx git-cz",
-		"commit:retry": "npx git-cz --retry"
+		"commit": "git commit",
+		"commit:retry": "git commit --amend"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "^20.1.0",
 		"@commitlint/config-conventional": "^20.0.0",
-		"@commitlint/cz-commitlint": "^20.1.0",
 		"@sveltejs/kit": "^2.47.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@types/adm-zip": "^0.5.7",
@@ -30,7 +29,6 @@
 		"@types/markdown-it": "^14.1.2",
 		"@types/turndown": "^5.0.5",
 		"@types/xml2js": "^0.4.14",
-		"commitizen": "^4.3.1",
 		"husky": "^9.1.7",
 		"prisma": "^6.2.1",
 		"svelte": "^5.40.1",
@@ -64,5 +62,13 @@
 		"turndown": "^7.2.1",
 		"turndown-plugin-gfm": "^1.0.2",
 		"xml2js": "^0.6.2"
+	},
+	"overrides": {
+		"@xmldom/xmldom": "^0.9.5",
+		"rimraf": "^6.0.1",
+		"glob": "^11.0.0",
+		"are-we-there-yet": "^4.0.2",
+		"npmlog": "^7.0.1",
+		"gauge": "^5.0.2"
 	}
 }

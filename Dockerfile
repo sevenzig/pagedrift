@@ -3,6 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Upgrade npm to 11.6.3
+RUN npm install -g npm@11.6.3
+
 # Copy package files
 COPY package*.json ./
 
@@ -23,8 +26,9 @@ FROM node:22-alpine AS production
 
 WORKDIR /app
 
-# Install wget for healthchecks
-RUN apk add --no-cache wget
+# Install wget for healthchecks and upgrade npm to 11.6.3
+RUN apk add --no-cache wget && \
+    npm install -g npm@11.6.3
 
 # Copy package files
 COPY package*.json ./
