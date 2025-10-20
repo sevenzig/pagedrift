@@ -44,11 +44,11 @@ RUN mkdir -p /app/data/books /app/data/db
 # In production with proper volume permissions, consider using USER node
 
 # Expose port (can be overridden by PORT env var)
-EXPOSE 3000
+EXPOSE 7000
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=7000
 ENV HOST=0.0.0.0
 
 # Health check
