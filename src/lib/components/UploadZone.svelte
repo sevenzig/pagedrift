@@ -84,8 +84,21 @@
 
 			const response = await fetch('/api/books/preview', {
 				method: 'POST',
-				body: formData
+				body: formData,
+				credentials: 'include'  // Ensure cookies are sent
 			});
+
+			// Log response status and headers for debugging
+			console.log('Preview response status:', response.status);
+			console.log('Preview response content-type:', response.headers.get('content-type'));
+			
+			// Check if response is JSON before parsing
+			const contentType = response.headers.get('content-type');
+			if (!contentType || !contentType.includes('application/json')) {
+				const textContent = await response.text();
+				console.error('Non-JSON response:', textContent.substring(0, 500));
+				throw new Error(`Server returned ${response.status}: ${response.statusText}. Expected JSON but got ${contentType}`);
+			}
 
 			const data = await response.json();
 			console.log('Preview response data:', data);

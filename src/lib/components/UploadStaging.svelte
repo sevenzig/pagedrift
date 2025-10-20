@@ -46,8 +46,17 @@
 			const response = await fetch('/api/books/metadata-search', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(searchQuery)
+				body: JSON.stringify(searchQuery),
+				credentials: 'include'  // Ensure cookies are sent
 			});
+
+			// Check if response is JSON before parsing
+			const contentType = response.headers.get('content-type');
+			if (!contentType || !contentType.includes('application/json')) {
+				const textContent = await response.text();
+				console.error('Non-JSON response from metadata-search:', textContent.substring(0, 500));
+				throw new Error(`Server returned ${response.status}: ${response.statusText}. Expected JSON but got ${contentType}`);
+			}
 
 			const data = await response.json();
 
@@ -100,8 +109,17 @@
 
 			const response = await fetch('/api/books/upload', {
 				method: 'POST',
-				body: formData
+				body: formData,
+				credentials: 'include'  // Ensure cookies are sent
 			});
+
+			// Check if response is JSON before parsing
+			const contentType = response.headers.get('content-type');
+			if (!contentType || !contentType.includes('application/json')) {
+				const textContent = await response.text();
+				console.error('Non-JSON response from upload:', textContent.substring(0, 500));
+				throw new Error(`Server returned ${response.status}: ${response.statusText}. Expected JSON but got ${contentType}`);
+			}
 
 			const data = await response.json();
 
