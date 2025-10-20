@@ -8,13 +8,16 @@ services:
     networks:
       - dokploy-network
     labels:
-      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf.rule=Host(`books.phelddagrif.farm`)
-      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf.entrypoints=web
-      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf.middlewares=redirect-to-https@file
+      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-web.rule=Host(`books.phelddagrif.farm`)
+      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-web.entrypoints=web
+      - traefik.http.services.phelddagriffarm-pagedrift-cknlcf-web.loadbalancer.server.port=7000
+      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-web.service=phelddagriffarm-pagedrift-cknlcf-web
+      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-web.middlewares=redirect-to-https@file
       - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-websecure.rule=Host(`books.phelddagrif.farm`)
       - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-websecure.entrypoints=websecure
+      - traefik.http.services.phelddagriffarm-pagedrift-cknlcf-websecure.loadbalancer.server.port=7000
+      - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-websecure.service=phelddagriffarm-pagedrift-cknlcf-websecure
       - traefik.http.routers.phelddagriffarm-pagedrift-cknlcf-websecure.tls.certresolver=letsencrypt
-      - traefik.http.services.phelddagriffarm-pagedrift-cknlcf.loadbalancer.server.port=7000
       - traefik.enable=true
     environment:
       - NODE_ENV=production
