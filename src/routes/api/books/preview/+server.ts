@@ -47,27 +47,48 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const arrayBuffer = await file.arrayBuffer();
 		const buffer = Buffer.from(arrayBuffer);
 
-		// Parse the book
-		const parsed = await parseBook(buffer, file.name, format);
+	// Parse the book
+	const parsed = await parseBook(buffer, file.name, format);
 
-		// Add file size to metadata
-		if (parsed.metadata) {
-			parsed.metadata.fileSize = buffer.length;
+	// Add file size to metadata
+	if (parsed.metadata) {
+		parsed.metadata.fileSize = buffer.length;
+	}
+
+	// Log parsed metadata for debugging
+	console.log('Parsed book data:', {
+		title: parsed.title,
+		author: parsed.author,
+		hasCover: !!parsed.coverImage,
+		coverLength: parsed.coverImage?.length,
+		metadata: {
+			publicationYear: parsed.metadata?.publicationYear,
+			isbn: parsed.metadata?.isbn,
+			publisher: parsed.metadata?.publisher,
+			description: parsed.metadata?.description?.substring(0, 100)
 		}
+	});
 
-		// Return preview data (without saving anything)
-		return json({
-			preview: {
-				title: parsed.title,
-				author: parsed.author,
-				format,
-				coverImage: parsed.coverImage,
-				metadata: parsed.metadata,
-				fileName: file.name,
-				fileSize: buffer.length,
-				chaptersCount: parsed.chapters.length
-			}
-		});
+	// Validate cover image data URL
+	let coverImage = parsed.coverImage;
+	if (coverImage && !coverImage.startsWith('data:')) {
+		console.warn('Cover image does not appear to be a valid data URL, removing');
+		coverImage = undefined;
+	}
+
+	// Return preview data (without saving anything)
+	return json({
+		preview: {
+			title: parsed.title,
+			author: parsed.author,
+			format,
+			coverImage,
+			metadata: parsed.metadata,
+			fileName: file.name,
+			fileSize: buffer.length,
+			chaptersCount: parsed.chapters.length
+		}
+	});
 	} catch (error) {
 		console.error('Preview error:', error);
 		const message = error instanceof Error ? error.message : 'Preview failed';

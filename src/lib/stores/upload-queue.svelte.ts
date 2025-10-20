@@ -121,11 +121,17 @@ class UploadQueue {
 				file.metadata.isbn = preview.metadata.isbn;
 				console.log('Set ISBN:', preview.metadata.isbn);
 			}
-			if (preview.metadata?.description) {
-				file.metadata.description = preview.metadata.description;
-				console.log('Set description:', preview.metadata.description);
-			}
+		if (preview.metadata?.description) {
+			file.metadata.description = preview.metadata.description;
+			console.log('Set description:', preview.metadata.description);
 		}
+		if (preview.metadata?.publisher) {
+			// Note: publisher is not in StagingMetadata interface, but could be added
+			console.log('Publisher available but not stored in staging:', preview.metadata.publisher);
+		}
+		
+		console.log('Final metadata state:', file.metadata);
+	}
 	}
 
 	/**

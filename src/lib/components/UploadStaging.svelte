@@ -10,12 +10,22 @@
 	let error = $state<string | null>(null);
 	let lookingUpMetadata = $state(false);
 	let metadataError = $state<string | null>(null);
+	let coverImageError = $state(false);
 
 	const current = $derived(uploadQueue.current);
 	const hasNext = $derived(uploadQueue.hasNext);
 	const currentIdx = $derived(uploadQueue.currentIdx);
 	const total = $derived(uploadQueue.total);
 	const hasPrevious = $derived(uploadQueue.previous !== null);
+
+	// Reset error states when current file changes
+	$effect(() => {
+		if (current) {
+			coverImageError = false;
+			metadataError = null;
+			error = null;
+		}
+	});
 
 	function updateMetadata(field: string, value: any) {
 		uploadQueue.updateMetadata({ [field]: value });
@@ -171,18 +181,34 @@
 				<div class="preview-content">
 					<h3 class="text-lg font-semibold mb-4">Preview</h3>
 
-					{#if current.preview?.coverImage}
-						<div class="cover-preview">
-							<img src={current.preview.coverImage} alt="Cover" class="cover-image" />
+				{#if current.preview?.coverImage && !coverImageError}
+					<div class="cover-preview">
+						<img 
+							src={current.preview.coverImage} 
+							alt="Cover" 
+							class="cover-image"
+							onerror={() => {
+								console.error('Failed to load cover image');
+								coverImageError = true;
+							}}
+							onload={() => {
+								console.log('Cover image loaded successfully');
+							}}
+						/>
+					</div>
+				{:else}
+					<div class="cover-placeholder">
+						<div class="text-6xl mb-2">📖</div>
+						<div class="text-sm text-muted-foreground uppercase">
+							{current.preview?.format || 'Book'}
 						</div>
-					{:else}
-						<div class="cover-placeholder">
-							<div class="text-6xl mb-2">📖</div>
-							<div class="text-sm text-muted-foreground uppercase">
-								{current.preview?.format || 'Book'}
+						{#if coverImageError}
+							<div class="text-xs text-muted-foreground mt-2">
+								Cover image unavailable
 							</div>
-						</div>
-					{/if}
+						{/if}
+					</div>
+				{/if}
 
 					<div class="preview-info">
 						<div class="preview-item">
