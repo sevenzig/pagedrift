@@ -100,14 +100,31 @@ class UploadQueue {
 		if (file) {
 			file.preview = preview;
 			file.status = 'ready';
-			// Pre-fill metadata from preview
-			if (preview.title) file.metadata.title = preview.title;
-			if (preview.author) file.metadata.author = preview.author;
-			if (preview.metadata?.publicationYear) {
-				file.metadata.publicationYear = preview.metadata.publicationYear.toString();
+			
+			// Pre-fill metadata from preview - always update with parsed values
+			console.log('Updating preview for file:', id, 'with preview:', preview);
+			
+			if (preview.title) {
+				file.metadata.title = preview.title;
+				console.log('Set title:', preview.title);
 			}
-			if (preview.metadata?.isbn) file.metadata.isbn = preview.metadata.isbn;
-			if (preview.metadata?.description) file.metadata.description = preview.metadata.description;
+			if (preview.author) {
+				file.metadata.author = preview.author;
+				console.log('Set author:', preview.author);
+			}
+			if (preview.metadata?.publicationYear) {
+				const year = preview.metadata.publicationYear.toString();
+				file.metadata.publicationYear = year;
+				console.log('Set publication year:', year);
+			}
+			if (preview.metadata?.isbn) {
+				file.metadata.isbn = preview.metadata.isbn;
+				console.log('Set ISBN:', preview.metadata.isbn);
+			}
+			if (preview.metadata?.description) {
+				file.metadata.description = preview.metadata.description;
+				console.log('Set description:', preview.metadata.description);
+			}
 		}
 	}
 

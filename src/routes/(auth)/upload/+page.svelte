@@ -9,10 +9,10 @@
     const canUpload = data.user?.role === 'admin' || data.user?.canUpload;
 </script>
 
-<div class="max-w-full mx-auto px-6 py-8 space-y-6">
+<div class="upload-page">
     {#if canUpload}
         {#if !hasFiles}
-            <div class="max-w-3xl mx-auto">
+            <div class="max-w-3xl mx-auto px-6 py-8">
                 <h1 class="text-2xl font-semibold mb-6">Upload books</h1>
                 <UploadZone />
             </div>
@@ -20,7 +20,7 @@
             <UploadStaging />
         {/if}
     {:else}
-        <div class="max-w-3xl mx-auto text-center py-12">
+        <div class="max-w-3xl mx-auto text-center py-12 px-6">
             <div class="text-6xl mb-4">🔒</div>
             <h1 class="text-2xl font-semibold mb-4">Upload Permission Required</h1>
             <p class="text-muted-foreground mb-6">
@@ -32,5 +32,12 @@
         </div>
     {/if}
 </div>
+
+<style>
+    .upload-page {
+        height: calc(100vh - 4rem);
+        overflow: hidden;
+    }
+</style>
 
 

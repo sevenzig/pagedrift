@@ -8,6 +8,8 @@
 
 	let uploading = $state(false);
 	let error = $state<string | null>(null);
+	let lookingUpMetadata = $state(false);
+	let metadataError = $state<string | null>(null);
 
 	const current = $derived(uploadQueue.current);
 	const hasNext = $derived(uploadQueue.hasNext);
@@ -21,6 +23,54 @@
 
 	function copyFromPrevious() {
 		uploadQueue.copyFromPrevious();
+	}
+
+	async function handleAutoLookup() {
+		if (!current) return;
+
+		metadataError = null;
+		lookingUpMetadata = true;
+
+		try {
+			// First, we need to create a temporary FormData to search
+			const searchQuery = {
+				title: current.metadata.title || current.preview?.title || '',
+				author: current.metadata.author || current.preview?.author || ''
+			};
+
+			if (!searchQuery.title) {
+				metadataError = 'No title available for metadata lookup';
+				return;
+			}
+
+			const response = await fetch('/api/books/metadata-search', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(searchQuery)
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Metadata lookup failed');
+			}
+
+			// Update the metadata with the first result
+			if (data.result) {
+				if (data.result.title) updateMetadata('title', data.result.title);
+				if (data.result.author) updateMetadata('author', data.result.author);
+				if (data.result.publicationYear) {
+					updateMetadata('publicationYear', data.result.publicationYear.toString());
+				}
+				if (data.result.isbn) updateMetadata('isbn', data.result.isbn);
+				if (data.result.description) updateMetadata('description', data.result.description);
+			}
+		} catch (err) {
+			console.error('Metadata lookup error:', err);
+			metadataError = err instanceof Error ? err.message : 'Failed to lookup metadata';
+		} finally {
+			lookingUpMetadata = false;
+		}
 	}
 
 	async function handleFinalize() {
@@ -99,7 +149,7 @@
 
 		<div class="staging-grid">
 			<!-- Left: Preview -->
-			<Card class="p-6">
+			<Card class="preview-card">
 				<div class="preview-content">
 					<h3 class="text-lg font-semibold mb-4">Preview</h3>
 
@@ -137,8 +187,8 @@
 				</div>
 			</Card>
 
-			<!-- Right: Metadata form -->
-			<Card class="p-6">
+			<!-- Center: Metadata form -->
+			<Card class="metadata-card">
 				<div class="metadata-content">
 					<div class="section-header">
 						<h3 class="text-lg font-semibold">Metadata</h3>
@@ -248,17 +298,55 @@
 								{error}
 							</div>
 						{/if}
-
-						<!-- Action buttons -->
-						<div class="action-buttons">
-							<Button variant="outline" onclick={handleSkip} disabled={uploading}>
-								Skip This File
-							</Button>
-							<Button onclick={handleFinalize} disabled={uploading}>
-								{uploading ? 'Saving...' : hasNext ? 'Save & Next' : 'Save & Complete'}
-							</Button>
-						</div>
 					</form>
+				</div>
+			</Card>
+
+			<!-- Right: Actions -->
+			<Card class="actions-card">
+				<div class="actions-content">
+					<h3 class="text-lg font-semibold mb-4">Actions</h3>
+
+					<div class="actions-section">
+						<h4 class="text-sm font-medium mb-2 text-muted-foreground">Metadata Lookup</h4>
+						<Button 
+							variant="outline" 
+							onclick={handleAutoLookup} 
+							disabled={uploading || lookingUpMetadata}
+							class="w-full mb-2"
+						>
+							{lookingUpMetadata ? 'Searching...' : '🔍 Search for Metadata'}
+						</Button>
+						{#if metadataError}
+							<div class="text-xs text-destructive mb-2">
+								{metadataError}
+							</div>
+						{/if}
+						<p class="text-xs text-muted-foreground">
+							Automatically find book information from online databases
+						</p>
+					</div>
+
+					<div class="divider"></div>
+
+					<div class="actions-section">
+						<h4 class="text-sm font-medium mb-2 text-muted-foreground">Save</h4>
+						<Button 
+							onclick={handleFinalize} 
+							disabled={uploading}
+							class="w-full mb-2"
+						>
+							{uploading ? 'Saving...' : hasNext ? 'Save & Next' : 'Save & Complete'}
+						</Button>
+						<Button 
+							variant="outline" 
+							onclick={handleSkip} 
+							disabled={uploading}
+							class="w-full"
+						>
+							Skip This File
+						</Button>
+					</div>
 				</div>
 			</Card>
 		</div>
@@ -267,12 +355,17 @@
 
 <style>
 	.staging-container {
-		max-width: 1200px;
-		margin: 0 auto;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
 		padding: 1.5rem;
+		max-height: calc(100vh - 4rem);
+		overflow: hidden;
 	}
 
 	.progress-header {
+		flex-shrink: 0;
 		margin-bottom: 1.5rem;
 	}
 
@@ -293,20 +386,39 @@
 
 	.staging-grid {
 		display: grid;
-		grid-template-columns: 1fr 2fr;
+		grid-template-columns: minmax(280px, 1fr) minmax(400px, 2fr) minmax(280px, 1fr);
 		gap: 1.5rem;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
 	}
 
-	@media (max-width: 768px) {
+	@media (max-width: 1200px) {
 		.staging-grid {
 			grid-template-columns: 1fr;
+			overflow-y: auto;
 		}
+	}
+
+	/* Card styles with scrolling */
+	:global(.preview-card),
+	:global(.metadata-card),
+	:global(.actions-card) {
+		display: flex;
+		flex-direction: column;
+		padding: 1.5rem;
+		overflow: hidden;
+	}
+
+	:global(.metadata-card) {
+		overflow-y: auto;
 	}
 
 	.preview-content {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		overflow-y: auto;
 	}
 
 	.cover-preview {
@@ -315,6 +427,7 @@
 		overflow: hidden;
 		border-radius: 0.5rem;
 		background: hsl(var(--muted));
+		flex-shrink: 0;
 	}
 
 	.cover-image {
@@ -332,12 +445,14 @@
 		justify-content: center;
 		background: linear-gradient(to bottom right, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.05));
 		border-radius: 0.5rem;
+		flex-shrink: 0;
 	}
 
 	.preview-info {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+		flex-shrink: 0;
 	}
 
 	.preview-item {
@@ -362,12 +477,16 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		overflow-y: auto;
+		flex: 1;
 	}
 
 	.section-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		flex-shrink: 0;
+		gap: 0.5rem;
 	}
 
 	.metadata-form {
@@ -433,10 +552,23 @@
 		font-size: 0.875rem;
 	}
 
-	.action-buttons {
+	.actions-content {
 		display: flex;
-		gap: 1rem;
-		margin-top: 1rem;
+		flex-direction: column;
+		gap: 1.5rem;
+		overflow-y: auto;
+	}
+
+	.actions-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.divider {
+		height: 1px;
+		background: hsl(var(--border));
+		margin: 0.5rem 0;
 	}
 </style>
 

@@ -72,34 +72,36 @@
                 }
         }
 
-        async function fetchPreview(file: File) {
-                const queuedFile = uploadQueue.files.find(f => f.file === file);
-                if (!queuedFile) return;
+	async function fetchPreview(file: File) {
+		const queuedFile = uploadQueue.files.find(f => f.file === file);
+		if (!queuedFile) return;
 
-                uploadQueue.updateStatus(queuedFile.id, 'previewing');
+		uploadQueue.updateStatus(queuedFile.id, 'previewing');
 
-                try {
-                        const formData = new FormData();
-                        formData.append('file', file);
+		try {
+			const formData = new FormData();
+			formData.append('file', file);
 
-                        const response = await fetch('/api/books/preview', {
-                                method: 'POST',
-                                body: formData
-                        });
+			const response = await fetch('/api/books/preview', {
+				method: 'POST',
+				body: formData
+			});
 
-                        const data = await response.json();
+			const data = await response.json();
+			console.log('Preview response data:', data);
 
-                        if (!response.ok) {
-                                throw new Error(data.error || 'Preview failed');
-                        }
+			if (!response.ok) {
+				throw new Error(data.error || 'Preview failed');
+			}
 
-                        uploadQueue.updatePreview(queuedFile.id, data.preview);
-                } catch (err) {
-                        console.error('Preview error:', err);
-                        const errorMsg = err instanceof Error ? err.message : 'Failed to preview file';
-                        uploadQueue.updateStatus(queuedFile.id, 'error', errorMsg);
-                }
-        }
+			console.log('Calling updatePreview with:', queuedFile.id, data.preview);
+			uploadQueue.updatePreview(queuedFile.id, data.preview);
+		} catch (err) {
+			console.error('Preview error:', err);
+			const errorMsg = err instanceof Error ? err.message : 'Failed to preview file';
+			uploadQueue.updateStatus(queuedFile.id, 'error', errorMsg);
+		}
+	}
 
         async function handleFile(file: File) {
                 await handleFiles([file]);
