@@ -51,9 +51,9 @@ ENV NODE_ENV=production
 ENV PORT=7000
 ENV HOST=0.0.0.0
 
-# Health check
+# Health check - use root endpoint instead of auth endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/api/auth/me || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/ || exit 1
 
 # Run migrations and start the app
 # Use exec form to ensure proper signal handling
