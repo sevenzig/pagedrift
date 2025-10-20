@@ -1,10 +1,10 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
-# Upgrade npm to 11.6.3
-RUN npm install -g npm@11.6.3
+# Upgrade npm to 11.6.2
+RUN npm install -g npm@11.6.2
 
 # Copy package files
 COPY package*.json ./
@@ -22,13 +22,13 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production stage
-FROM node:22-alpine AS production
+FROM node:25-alpine AS production
 
 WORKDIR /app
 
-# Install wget for healthchecks and upgrade npm to 11.6.3
+# Install wget for healthchecks and upgrade npm to 11.6.2
 RUN apk add --no-cache wget && \
-    npm install -g npm@11.6.3
+    npm install -g npm@11.6.2
 
 # Copy package files
 COPY package*.json ./

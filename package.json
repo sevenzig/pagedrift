@@ -13,9 +13,7 @@
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:deploy": "prisma migrate deploy",
-		"prisma:studio": "prisma studio",
-		"commit": "git commit",
-		"commit:retry": "git commit --amend"
+		"prisma:studio": "prisma studio"
 	},
 	"devDependencies": {
 		"@commitlint/cli": "^20.1.0",
