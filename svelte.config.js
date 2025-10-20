@@ -17,7 +17,10 @@ const config = {
 			precompress: false,
 			envPrefix: '',
 			polyfill: false
-		})
+		}),
+		csrf: {
+			trustedOrigins: ['https://books.phelddagrif.farm', 'http://localhost:3000', 'http://localhost:5173']
+		}
 	}
 };
 
