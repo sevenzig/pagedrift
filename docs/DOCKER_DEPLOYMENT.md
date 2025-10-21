@@ -207,6 +207,109 @@ docker-compose exec meilisearch sh
 
 ## 🐛 Troubleshooting
 
+### Docker Build Timeout / npm ci Failures
+
+**Problem**: Build fails with `EIDLETIMEOUT` error during `npm ci` or dependency installation timeouts
+
+**Error Messages**:
+```
+npm error code EIDLETIMEOUT
+npm error Idle timeout reached for host `registry.npmjs.org:443`
+ERROR: process "/bin/sh -c npm ci" did not complete successfully: exit code: 1
+```
+
+**Root Causes**:
+- Slow or unreliable network connection to npm registry
+- Large dependency tree taking too long to download
+- npm registry temporary issues or rate limiting
+- Docker build context issues in Dokploy or CI/CD environments
+
+**Solutions**:
+
+1. **Verify npm configuration is present** (already implemented in Dockerfile):
+   - The Dockerfile now includes retry logic and extended timeouts
+   - `.npmrc` file configures fetch retries and timeout values
+   - Build will automatically retry up to 5 times with exponential backoff
+
+2. **Use BuildKit for better caching** (Dokploy users):
+   ```bash
+   # Enable BuildKit in Docker daemon
+   export DOCKER_BUILDKIT=1
+   
+   # Or add to /etc/docker/daemon.json:
+   {
+     "features": {
+       "buildkit": true
+     }
+   }
+   ```
+
+3. **Increase Docker daemon timeout** (if you control the build environment):
+   ```bash
+   # Edit /etc/docker/daemon.json
+   {
+     "max-concurrent-downloads": 3,
+     "max-concurrent-uploads": 5,
+     "default-runtime": "runc"
+   }
+   ```
+
+4. **Use npm mirror or proxy** (for persistent issues):
+   
+   Add to `.npmrc`:
+   ```
+   registry=https://registry.npmmirror.com/
+   ```
+   
+   Or use a corporate proxy:
+   ```
+   proxy=http://proxy.company.com:8080
+   https-proxy=http://proxy.company.com:8080
+   ```
+
+5. **Build locally and push image** (workaround for Dokploy):
+   ```bash
+   # Build on a machine with better connectivity
+   docker build -t your-registry/pagedrift:latest .
+   docker push your-registry/pagedrift:latest
+   
+   # Update docker-compose.yml to use pre-built image
+   services:
+     app:
+       image: your-registry/pagedrift:latest
+       # Comment out build section
+   ```
+
+6. **Clear Docker build cache and retry**:
+   ```bash
+   # Clear build cache
+   docker builder prune -af
+   
+   # Rebuild without cache
+   docker-compose build --no-cache
+   ```
+
+7. **Check network connectivity during build**:
+   ```bash
+   # Test npm registry access
+   curl -I https://registry.npmjs.org/
+   
+   # Check for network issues
+   ping registry.npmjs.org
+   ```
+
+**Expected Behavior After Fixes**:
+- Build will retry failed downloads automatically
+- Extended timeout allows slow networks to complete
+- Progress will be logged at error level for easier debugging
+- Builds should succeed on networks with occasional packet loss
+
+**If Issues Persist**:
+- Contact Dokploy support if building on their platform
+- Check npm status page: https://status.npmjs.org/
+- Consider scheduling builds during off-peak hours
+- Use a VPS with better network connectivity for building
+
 ### Services Won't Start
 
 **Problem**: `docker-compose up -d` fails or services exit immediately

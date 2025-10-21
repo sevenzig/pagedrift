@@ -6,11 +6,18 @@ WORKDIR /app
 # Upgrade npm to 11.6.2
 RUN npm install -g npm@11.6.2
 
+# Configure npm for better reliability
+RUN npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-timeout 300000
+
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies (including devDependencies for build)
-RUN npm ci
+# Use retry logic for resilience against network issues
+RUN npm ci --prefer-offline --no-audit || npm ci --prefer-offline --no-audit || npm ci
 
 # Copy source code
 COPY . .
@@ -30,11 +37,18 @@ WORKDIR /app
 RUN apk add --no-cache wget && \
     npm install -g npm@11.6.2
 
+# Configure npm for better reliability
+RUN npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-timeout 300000
+
 # Copy package files
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --omit=dev
+# Use retry logic for resilience against network issues
+RUN npm ci --omit=dev --prefer-offline --no-audit || npm ci --omit=dev --prefer-offline --no-audit || npm ci --omit=dev
 
 # Copy built application from builder
 COPY --from=builder /app/build ./build
