@@ -35,12 +35,12 @@
                     {/if}
                 </nav>
             </div>
+            
+            <!-- User Card -->
+            <UserCard user={data.user} />
         </div>
     </div>
 </header>
 
 {@render children?.()}
-
-<!-- Floating User Card - Available on all pages -->
-<UserCard user={data.user} />
 

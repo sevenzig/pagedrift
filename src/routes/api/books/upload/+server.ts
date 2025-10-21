@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requirePermission } from '$lib/server/middleware/permissions';
+import { db } from '$lib/server/db';
 import { createBook } from '$lib/server/db/books';
 import { parseBook } from '$lib/server/parsers';
 import { indexBook } from '$lib/server/search/indexing';

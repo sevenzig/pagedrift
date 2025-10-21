@@ -17,7 +17,7 @@ COPY package*.json ./
 
 # Install dependencies (including devDependencies for build)
 # Use retry logic for resilience against network issues
-RUN npm ci --prefer-offline --no-audit || npm ci --prefer-offline --no-audit || npm ci
+RUN for i in 1 2 3; do npm ci --prefer-offline --no-audit && break || sleep 10; done
 
 # Copy source code
 COPY . .
@@ -48,7 +48,7 @@ COPY package*.json ./
 
 # Install production dependencies only
 # Use retry logic for resilience against network issues
-RUN npm ci --omit=dev --prefer-offline --no-audit || npm ci --omit=dev --prefer-offline --no-audit || npm ci --omit=dev
+RUN for i in 1 2 3; do npm ci --omit=dev --prefer-offline --no-audit && break || sleep 10; done
 
 # Copy built application from builder
 COPY --from=builder /app/build ./build

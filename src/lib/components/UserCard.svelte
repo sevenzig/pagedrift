@@ -33,8 +33,8 @@
 	}
 </script>
 
-<!-- Floating User Card -->
-<div class="fixed bottom-6 right-6 z-50">
+<!-- User Card -->
+<div class="relative">
 	<!-- Toggle Button -->
 	<button
 		onclick={toggleCard}
@@ -55,7 +55,7 @@
 
 	<!-- User Card -->
 	{#if isOpen}
-		<Card class="absolute bottom-16 right-0 w-80 p-4 shadow-xl border-2 bg-background/95 backdrop-blur-sm">
+		<Card class="absolute top-full mt-2 right-0 w-80 p-4 shadow-xl border-2 bg-background/95 backdrop-blur-sm">
 			<div class="space-y-4">
 				<!-- User Info -->
 				<div class="flex items-center gap-3 pb-3 border-b">
@@ -187,14 +187,3 @@
 		</Card>
 	{/if}
 </div>
-
-<!-- Click outside to close -->
-{#if isOpen}
-	<div 
-		class="fixed inset-0 z-40" 
-		onclick={() => isOpen = false}
-		role="button"
-		tabindex="-1"
-		onkeydown={(e) => e.key === 'Escape' && (isOpen = false)}
-	></div>
-{/if}
