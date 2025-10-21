@@ -40,7 +40,8 @@ services:
 
 volumes:
   ebook_data:
-    driver: local
+    external: false
+    name: phelddagrif_ebook_data
 
 networks:
   dokploy-network:
