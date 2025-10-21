@@ -18,10 +18,14 @@
 - Better error handling for individual pages
 - Validation for empty PDFs
 
-### 4. **Improved MOBI Parser**
-- Added fallback encoding (latin-1 if utf-8 fails)
-- Better text cleaning and validation
-- Validation for empty or corrupted files
+### 4. **Enhanced MOBI Parser** 
+- Full MOBI/AZW3 support with @lingo-reader/mobi-parser library
+- Comprehensive metadata extraction (title, author, publisher, ISBN, etc.)
+- HTML content extraction and Markdown conversion
+- Cover image extraction
+- Embedded image support with base64 encoding
+- Real chapter structure from TOC or headings
+- First pages text extraction for metadata lookup
 
 ### 5. **Upload Component Improvements**
 - Added success message display
@@ -73,5 +77,6 @@
 - Some PDFs may be image-based and won't extract text well
 
 ### For MOBI files:
-- MOBI parsing is basic and may not work with all MOBI variants
-- Some MOBI files may have DRM protection
+- Enhanced MOBI parser now extracts metadata, images, and proper chapter structure
+- DRM-protected MOBI files cannot be parsed (remove DRM first with Calibre)
+- MOBI/AZW3 formats are fully supported

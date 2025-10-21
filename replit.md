@@ -98,10 +98,12 @@ src/
 - Quality depends on source PDF structure
 
 **MOBI:**
-- Basic text extraction
-- Automatic chapter division
-- Control character filtering
-- Note: Limited compared to EPUB (MVP baseline)
+- Full MOBI/AZW3 support with HTML extraction
+- Comprehensive metadata extraction (title, author, publisher, ISBN, etc.)
+- Cover image and embedded images
+- Real chapter structure from TOC or headings
+- HTML to Markdown conversion matching EPUB quality
+- Note: Now on par with EPUB functionality
 
 ### Reading Interface
 - Clean, centered reading column (optimal line length)

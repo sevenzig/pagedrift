@@ -37,6 +37,7 @@
 		"vite": "^7.1.7"
 	},
 	"dependencies": {
+		"@lingo-reader/mobi-parser": "^0.4.2",
 		"@prisma/client": "^6.2.1",
 		"@sveltejs/adapter-node": "^5.4.0",
 		"@tailwindcss/postcss": "^4.1.14",

@@ -64,11 +64,32 @@ docker-compose up -d
 
 ## 🚀 Deployment to Dokploy
 
+**⚠️ IMPORTANT: For Dokploy deployments, see [DOKPLOY_VOLUME_SETUP.md](./DOKPLOY_VOLUME_SETUP.md) for complete volume persistence setup.**
+
+This guide ensures your user data and uploaded books survive deployments and restarts.
+
 ### Prerequisites
 
 - Dokploy instance running
 - GitHub repository with this code
 - Or use docker-compose directly
+
+### Quick Dokploy Setup
+
+Before deploying, you MUST configure persistent volumes:
+
+```bash
+# 1. SSH to your Dokploy server
+ssh user@your-server.com
+
+# 2. Discover any existing data
+./find-existing-data.sh
+
+# 3. Create external volume (if needed)
+docker volume create phelddagrif_ebook_data
+
+# 4. Follow steps in DOKPLOY_VOLUME_SETUP.md
+```
 
 ### Option 1: Deploy from GitHub
 
@@ -99,8 +120,12 @@ docker-compose up -d
    ORIGIN=https://your-domain.com
    ```
 
-4. **Configure Volumes** in Dokploy:
-   - Mount `./data` → `/app/data` (for database and books)
+4. **Configure Volumes** in Dokploy UI:
+   - **Mount Type:** Volume Mount
+   - **Host Path:** `phelddagrif_ebook_data`
+   - **Mount Path:** `/app/data`
+   
+   ⚠️ See [DOKPLOY_VOLUME_SETUP.md](./DOKPLOY_VOLUME_SETUP.md) for detailed instructions
 
 5. **Deploy**
    - Click "Deploy"
