@@ -27,7 +27,7 @@ services:
       - MEILISEARCH_HOST=${MEILISEARCH_HOST:-http://meilisearch:7700}
       - MEILISEARCH_KEY=${MEILISEARCH_MASTER_KEY}
       - BOOKS_STORAGE_PATH=/app/data/books
-      - ORIGIN=${ORIGIN:-http://localhost:3000}
+      - ORIGIN=${ORIGIN:-http://localhost:7000}
     volumes:
       - ebook_data:/app/data
     healthcheck:
