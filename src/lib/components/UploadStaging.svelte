@@ -45,7 +45,8 @@
 			// First, we need to create a temporary FormData to search
 			const searchQuery = {
 				title: current.metadata.title || current.preview?.title || '',
-				author: current.metadata.author || current.preview?.author || ''
+				author: current.metadata.author || current.preview?.author || '',
+				fileId: current.fileId  // Include fileId for cache lookup
 			};
 
 			if (!searchQuery.title) {

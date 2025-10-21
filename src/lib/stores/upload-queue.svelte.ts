@@ -15,6 +15,7 @@ export interface StagingMetadata {
 
 export interface QueuedFile {
 	id: string;
+	fileId: string; // Stable ID based on file properties
 	file: File;
 	fileName: string;
 	fileSize: number;
@@ -25,6 +26,7 @@ export interface QueuedFile {
 		coverImage?: string;
 		metadata?: any;
 		chaptersCount: number;
+		firstPagesText?: string;
 	};
 	metadata: StagingMetadata;
 	status: 'pending' | 'previewing' | 'ready' | 'uploading' | 'completed' | 'error';
@@ -72,22 +74,28 @@ class UploadQueue {
 	 * Add files to the queue
 	 */
 	addFiles(files: File[]) {
-		const newFiles: QueuedFile[] = files.map((file) => ({
-			id: crypto.randomUUID(),
-			file,
-			fileName: file.name,
-			fileSize: file.size,
-			status: 'pending',
-			metadata: {
-				contentType: 'Book',
-				tags: [],
-				title: '',
-				author: '',
-				publicationYear: '',
-				isbn: '',
-				description: ''
-			}
-		}));
+		const newFiles: QueuedFile[] = files.map((file) => {
+			// Generate stable file ID based on file properties
+			const fileId = `${file.name}-${file.size}-${file.lastModified}`;
+			
+			return {
+				id: crypto.randomUUID(),
+				fileId,
+				file,
+				fileName: file.name,
+				fileSize: file.size,
+				status: 'pending',
+				metadata: {
+					contentType: 'Book',
+					tags: [],
+					title: '',
+					author: '',
+					publicationYear: '',
+					isbn: '',
+					description: ''
+				}
+			};
+		});
 
 		this.queue.push(...newFiles);
 	}

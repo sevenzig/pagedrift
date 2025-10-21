@@ -113,11 +113,18 @@ async function queryGoogleBooks(params: {
 	}
 
 	const url = `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=5`;
-	const response = await fetch(url, {
-		headers: {
-			'Accept': 'application/json'
-		}
-	});
+	
+	// Add timeout to prevent hanging
+	const response = await Promise.race([
+		fetch(url, {
+			headers: {
+				'Accept': 'application/json'
+			}
+		}),
+		new Promise<Response>((_, reject) => 
+			setTimeout(() => reject(new Error('Google Books API timeout')), 8000)
+		)
+	]);
 
 	if (!response.ok) {
 		throw new Error(`Google Books API error: ${response.status}`);
@@ -201,7 +208,14 @@ async function queryOpenLibrary(params: {
 	if (params.isbn) {
 		// ISBN lookup
 		const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${params.isbn}&format=json&jscmd=data`;
-		const response = await fetch(url);
+		
+		// Add timeout to prevent hanging
+		const response = await Promise.race([
+			fetch(url),
+			new Promise<Response>((_, reject) => 
+				setTimeout(() => reject(new Error('Open Library API timeout')), 8000)
+			)
+		]);
 
 		if (!response.ok) {
 			throw new Error(`Open Library API error: ${response.status}`);
@@ -247,7 +261,14 @@ async function queryOpenLibrary(params: {
 		}
 
 		const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=5`;
-		const response = await fetch(url);
+		
+		// Add timeout to prevent hanging
+		const response = await Promise.race([
+			fetch(url),
+			new Promise<Response>((_, reject) => 
+				setTimeout(() => reject(new Error('Open Library API timeout')), 8000)
+			)
+		]);
 
 		if (!response.ok) {
 			throw new Error(`Open Library API error: ${response.status}`);

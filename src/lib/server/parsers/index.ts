@@ -17,13 +17,14 @@ export interface ParsedBook {
 export async function parseBook(
 	buffer: Buffer,
 	filename: string,
-	format: 'epub' | 'pdf' | 'mobi'
+	format: 'epub' | 'pdf' | 'mobi',
+	options?: { quickPreview?: boolean }
 ): Promise<ParsedBook> {
 	switch (format) {
 		case 'epub':
 			return parseEpub(buffer);
 		case 'pdf':
-			return parsePdf(buffer, filename);
+			return parsePdf(buffer, filename, options);
 		case 'mobi':
 			return parseMobi(buffer, filename);
 		default:

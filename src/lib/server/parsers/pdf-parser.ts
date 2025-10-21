@@ -594,9 +594,14 @@ function createPageBasedChapters(pages: Array<{ markdown: string; pageNum: numbe
 	return chapters;
 }
 
-export async function parsePdf(buffer: Buffer, filename: string): Promise<ParsedBook> {
+export async function parsePdf(
+	buffer: Buffer, 
+	filename: string,
+	options?: { quickPreview?: boolean }
+): Promise<ParsedBook> {
 	try {
-		console.log('Starting enhanced PDF parsing...');
+		const isQuickPreview = options?.quickPreview || false;
+		console.log(`Starting ${isQuickPreview ? 'quick preview' : 'enhanced'} PDF parsing...`);
 		
 		const loadingTask = pdfjsLib.getDocument({
 			data: new Uint8Array(buffer),
@@ -612,7 +617,9 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 			throw new Error('PDF file appears to be empty or corrupted');
 		}
 
-		console.log(`Processing PDF: ${numPages} pages`);
+		// In quick preview mode, only process first 10 pages
+		const pagesToProcess = isQuickPreview ? Math.min(10, numPages) : numPages;
+		console.log(`Processing PDF: ${pagesToProcess}/${numPages} pages${isQuickPreview ? ' (quick preview)' : ''}`);
 
 		// Extract metadata
 		const metadata = await pdf.getMetadata();
@@ -649,22 +656,24 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 		// Generate normalized metadata
 		const bookMetadata = extractAndNormalizeMetadata(title, author, additionalMetadata);
 
-		// Image cache to avoid duplicate processing
+		// Image cache to avoid duplicate processing (skip in quick preview for performance)
 		const imageCache = new Map<string, ImageCacheEntry>();
-		
+
 		// Store text from first 5 pages for metadata extraction
 		let firstPagesText = '';
 		const firstPagesCount = Math.min(5, numPages);
-		
+
 		// Process all pages with enhanced structure detection
 		const pages: Array<{ markdown: string; pageNum: number; avgFontSize: number }> = [];
 
-		for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+		for (let pageNum = 1; pageNum <= pagesToProcess; pageNum++) {
 			try {
 				const page = await pdf.getPage(pageNum);
 				
-				// Extract images from page
-				const pageImages = await extractImagesFromPage(page, imageCache);
+				// Extract images from page (skip in quick preview for performance)
+				const pageImages = isQuickPreview 
+					? new Map<string, ImageCacheEntry>()
+					: await extractImagesFromPage(page, imageCache);
 				
 				// Extract text with structure
 				const textContent = await page.getTextContent();
@@ -677,7 +686,7 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 				
 				// Convert to markdown with structure preservation
 				const pageMarkdown = convertToMarkdown(structuredItems, pageImages);
-				
+
 				// Collect first pages text
 				if (pageNum <= firstPagesCount && pageMarkdown.trim()) {
 					firstPagesText += pageMarkdown + '\n\n';
@@ -685,7 +694,7 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 						firstPagesText = firstPagesText.substring(0, 5000);
 					}
 				}
-				
+
 				pages.push({
 					markdown: pageMarkdown,
 					pageNum,
@@ -693,7 +702,7 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 				});
 				
 				if (pageNum % 10 === 0) {
-					console.log(`Processed ${pageNum}/${numPages} pages, ${imageCache.size} images extracted`);
+					console.log(`Processed ${pageNum}/${pagesToProcess} pages, ${imageCache.size} images extracted`);
 				}
 			} catch (error) {
 				console.error(`Error parsing page ${pageNum}:`, error);
@@ -708,11 +717,16 @@ export async function parsePdf(buffer: Buffer, filename: string): Promise<Parsed
 		let chapters = detectChapters(pages);
 		
 		// Fallback to page-based chunking if no chapters detected or chapters are too few
-		if (chapters.length === 0 || (chapters.length === 1 && numPages > 20)) {
+		if (chapters.length === 0 || (chapters.length === 1 && pagesToProcess > 20)) {
 			console.log('No clear chapter structure detected, using page-based chunking');
 			chapters = createPageBasedChapters(pages, 10);
 		} else {
 			console.log(`Detected ${chapters.length} chapters`);
+		}
+		
+		// Add note to first chapter if this is a quick preview
+		if (isQuickPreview && pagesToProcess < numPages && chapters.length > 0) {
+			chapters[0].title = `${chapters[0].title} (Preview - first ${pagesToProcess} pages)`;
 		}
 
 		// Clean markdown for each chapter

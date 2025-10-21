@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requirePermission } from '$lib/server/middleware/permissions';
 import { parseBook } from '$lib/server/parsers';
+import { previewCache } from '$lib/server/cache/preview-cache';
 
 /**
  * POST /api/books/preview
@@ -47,8 +48,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const arrayBuffer = await file.arrayBuffer();
 		const buffer = Buffer.from(arrayBuffer);
 
-	// Parse the book
-	const parsed = await parseBook(buffer, file.name, format);
+	// Parse the book (use quick preview for PDFs)
+	const parsed = await parseBook(buffer, file.name, format, { 
+		quickPreview: format === 'pdf' 
+	});
 
 	// Add file size to metadata
 	if (parsed.metadata) {
@@ -76,6 +79,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		coverImage = undefined;
 	}
 
+	// Cache preview data for metadata search
+	if (locals.user && parsed.firstPagesText) {
+		const fileId = `${file.name}-${file.size}-${file.lastModified}`;
+		previewCache.set(locals.user.id, fileId, {
+			firstPagesText: parsed.firstPagesText,
+			metadata: parsed.metadata
+		});
+		console.log(`Cached preview data for file: ${fileId}`);
+	}
+
 	// Return preview data (without saving anything)
 	return json({
 		preview: {
@@ -86,7 +99,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			metadata: parsed.metadata,
 			fileName: file.name,
 			fileSize: buffer.length,
-			chaptersCount: parsed.chapters.length
+			chaptersCount: parsed.chapters.length,
+			firstPagesText: parsed.firstPagesText
 		}
 	});
 	} catch (error) {
