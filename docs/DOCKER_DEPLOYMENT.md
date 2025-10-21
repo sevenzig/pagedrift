@@ -475,6 +475,222 @@ ERROR: process "/bin/sh -c npm ci" did not complete successfully: exit code: 1
      timeout: 10s       # Increase from 5s
    ```
 
+## 🌐 Dokploy Deployment
+
+### Special Instructions for Dokploy
+
+Dokploy requires additional steps to ensure data persistence across deployments. The volume configuration uses `external: true` to prevent Docker from recreating volumes.
+
+#### Initial Setup (First Time Only)
+
+1. **SSH into your Dokploy server**:
+   ```bash
+   ssh user@your-server.com
+   cd /path/to/project
+   ```
+
+2. **Create the persistent volume**:
+   ```bash
+   docker volume create phelddagrif_ebook_data
+   ```
+
+3. **Verify volume creation**:
+   ```bash
+   docker volume ls | grep phelddagrif_ebook_data
+   # Should show: local     phelddagrif_ebook_data
+   ```
+
+#### Pre-Deployment Verification
+
+Before each deployment, run the verification script to ensure the volume exists:
+
+```bash
+# Make script executable (first time only)
+chmod +x ensure-volume.sh
+
+# Run pre-deployment check
+./ensure-volume.sh
+```
+
+This script will:
+- ✓ Check if the volume exists (creates it if missing)
+- ✓ Verify volume contents and data integrity
+- ✓ Display database and books statistics
+- ✓ Confirm volume is ready for deployment
+
+#### Deployment via Dokploy UI
+
+1. Navigate to your project in Dokploy
+2. Click "Deploy" or trigger a rebuild
+3. Wait for build and deployment to complete
+4. Run post-deployment verification (see below)
+
+#### Deployment via CLI
+
+```bash
+# Standard deployment
+docker-compose up -d --build
+
+# Or with explicit pull and rebuild
+docker-compose pull
+docker-compose up -d --build --force-recreate
+```
+
+#### Post-Deployment Verification
+
+After deployment, verify persistence is working:
+
+```bash
+# Make script executable (first time only)
+chmod +x verify-persistence.sh
+
+# Run post-deployment verification
+./verify-persistence.sh
+```
+
+This script will:
+- ✓ Confirm volume is mounted correctly
+- ✓ Verify database accessibility
+- ✓ Check file permissions
+- ✓ Test application health
+- ✓ Report any issues
+
+#### Testing Data Persistence
+
+To verify data survives redeployment:
+
+1. **Create test data**:
+   ```bash
+   # Register a user at https://your-domain.com/register
+   # Upload a test book
+   ```
+
+2. **Record test data**:
+   ```bash
+   # Note the user email and book title for verification
+   ```
+
+3. **Redeploy the application**:
+   ```bash
+   docker-compose down
+   docker-compose up -d --build
+   ```
+
+4. **Verify data persists**:
+   ```bash
+   # Log in with the same user credentials
+   # Verify the book is still accessible
+   ```
+
+#### Troubleshooting Dokploy Persistence
+
+**Issue: 401 Unauthorized after redeployment**
+
+This means the database is being wiped. Check:
+
+```bash
+# Verify volume exists
+docker volume ls | grep phelddagrif_ebook_data
+
+# Check if volume contains data
+docker run --rm -v phelddagrif_ebook_data:/data alpine ls -la /data/db/
+
+# Inspect container mounts
+docker inspect $(docker ps -q -f name=ebookvoyage) | grep -A 20 Mounts
+```
+
+**Issue: Volume not found during deployment**
+
+```bash
+# Manually create the volume
+docker volume create phelddagrif_ebook_data
+
+# Verify creation
+docker volume inspect phelddagrif_ebook_data
+
+# Redeploy
+docker-compose up -d
+```
+
+**Issue: Old data exists but not being used**
+
+```bash
+# List all volumes to find orphaned data
+docker volume ls
+
+# Check each volume for data
+docker run --rm -v <volume_name>:/data alpine ls -la /data/
+
+# If found, migrate data:
+docker volume create phelddagrif_ebook_data
+docker run --rm -v <old_volume>:/source -v phelddagrif_ebook_data:/target alpine cp -r /source/. /target/
+```
+
+**Issue: Permission denied errors**
+
+```bash
+# Fix permissions in volume
+docker run --rm -v phelddagrif_ebook_data:/data alpine sh -c "chmod -R 755 /data && chown -R 1000:1000 /data"
+
+# Restart container
+docker-compose restart
+```
+
+#### Dokploy Volume Backup
+
+Since Dokploy deployments can be unpredictable, regular backups are critical:
+
+```bash
+# Backup volume to tar.gz
+docker run --rm \
+  -v phelddagrif_ebook_data:/data \
+  -v $(pwd):/backup \
+  alpine tar czf /backup/ebook_backup_$(date +%Y%m%d_%H%M%S).tar.gz -C /data .
+
+# List backups
+ls -lh ebook_backup_*.tar.gz
+
+# Restore from backup
+docker run --rm \
+  -v phelddagrif_ebook_data:/data \
+  -v $(pwd):/backup \
+  alpine sh -c "rm -rf /data/* && tar xzf /backup/ebook_backup_TIMESTAMP.tar.gz -C /data"
+```
+
+#### Automated Backup Script for Dokploy
+
+Create `/usr/local/bin/backup-ebook-dokploy.sh`:
+
+```bash
+#!/bin/bash
+BACKUP_DIR="/backups/ebook-reader"
+VOLUME_NAME="phelddagrif_ebook_data"
+DATE=$(date +%Y%m%d_%H%M%S)
+KEEP_DAYS=7
+
+mkdir -p "$BACKUP_DIR"
+
+# Create backup
+docker run --rm \
+  -v "$VOLUME_NAME:/data" \
+  -v "$BACKUP_DIR:/backup" \
+  alpine tar czf "/backup/ebook_backup_$DATE.tar.gz" -C /data .
+
+# Remove old backups
+find "$BACKUP_DIR" -name "ebook_backup_*.tar.gz" -mtime +$KEEP_DAYS -delete
+
+echo "Backup completed: ebook_backup_$DATE.tar.gz"
+```
+
+Setup automated backups:
+```bash
+# Make executable
+chmod +x /usr/local/bin/backup-ebook-dokploy.sh
+
+# Add to crontab (daily at 3 AM)
+echo "0 3 * * * /usr/local/bin/backup-ebook-dokploy.sh >> /var/log/ebook-backup.log 2>&1" | crontab -
+```
+
 ## 🔒 Security Best Practices
 
 ### Before Deploying to Production

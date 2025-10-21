@@ -39,7 +39,7 @@ services:
 
 volumes:
   ebook_data:
-    external: false
+    external: true
     name: phelddagrif_ebook_data
 
 networks:
