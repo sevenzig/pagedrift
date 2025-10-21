@@ -225,6 +225,24 @@ docker-compose down
    - Search by title/author
    - Full-text search within books
 
+## 🏥 Health Check Endpoints
+
+The application provides health check endpoints for monitoring and Docker health checks:
+
+### `/api/health` - Comprehensive Health Check
+- **Purpose**: Full readiness verification for production monitoring
+- **Checks**: Database connectivity (Prisma), Meilisearch connectivity
+- **Response**: 
+  - `200 OK` when all services are healthy
+  - `503 Service Unavailable` when any service is down
+- **Usage**: Docker health checks, load balancer monitoring
+
+### `/` - Basic Availability Check
+- **Purpose**: Simple availability check for Docker health checks
+- **Checks**: Server responsiveness only
+- **Response**: `200 OK` with basic status
+- **Usage**: Quick health checks, bypasses authentication
+
 ## 🔒 Security Features
 
 - **Password Hashing**: bcrypt with salt rounds
